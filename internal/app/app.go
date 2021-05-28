@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"github.com/fedragon/go-dedup/internal"
 	"io"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -43,12 +44,12 @@ func Walk(root string) <-chan internal.Media {
 	go func() {
 		defer close(media)
 
-		err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
 
-			ext := strings.ToLower(filepath.Ext(info.Name()))
+			ext := strings.ToLower(filepath.Ext(d.Name()))
 			if ext == JPG || ext == JPEG || ext == MP4 || ext == ORF {
 				bytes, err := hash(path)
 				if err != nil {
