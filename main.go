@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/sha256"
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -12,12 +11,13 @@ import (
 )
 
 const (
-	ORF  = ".orf"
 	JPG  = ".jpg"
 	JPEG = ".jpeg"
+	MP4  = ".mp4"
+	ORF  = ".orf"
 )
 
-type Image struct {
+type Media struct {
 	Path      string
 	Hash      []byte
 	Timestamp time.Time
@@ -25,18 +25,22 @@ type Image struct {
 }
 
 func main() {
-	images := walk(os.Getenv("ROOT"))
+	media := walk(os.Getenv("ROOT"))
 	var count int
 
-	for i := range images {
-		if i.Err != nil {
-			log.Printf(i.Err.Error())
+	for m := range media {
+		if count%1000 == 0 {
+			log.Printf("Found %v media so far\n", count)
+		}
+
+		if m.Err != nil {
+			log.Fatalf(m.Err.Error())
 		} else {
 			count++
 		}
 	}
 
-	fmt.Printf("Found %v images\n", count)
+	log.Printf("Found %v media\n", count)
 }
 
 func hash(path string) ([]byte, error) {
@@ -58,11 +62,11 @@ func hash(path string) ([]byte, error) {
 	return h.Sum(nil), nil
 }
 
-func walk(root string) <-chan Image {
-	images := make(chan Image)
+func walk(root string) <-chan Media {
+	media := make(chan Media)
 
 	go func() {
-		defer close(images)
+		defer close(media)
 
 		err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
@@ -70,13 +74,13 @@ func walk(root string) <-chan Image {
 			}
 
 			ext := strings.ToLower(filepath.Ext(info.Name()))
-			if ext == JPG || ext == JPEG || ext == ORF {
+			if ext == JPG || ext == JPEG || ext == MP4 || ext == ORF {
 				bytes, err := hash(path)
 				if err != nil {
 					return err
 				}
 
-				images <- Image{
+				media <- Media{
 					Path:      path,
 					Hash:      bytes,
 					Timestamp: time.Now(),
@@ -87,9 +91,9 @@ func walk(root string) <-chan Image {
 		})
 
 		if err != nil {
-			images <- Image{Err: err}
+			media <- Media{Err: err}
 		}
 	}()
 
-	return images
+	return media
 }

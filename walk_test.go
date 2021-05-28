@@ -17,12 +17,12 @@ func TestWalk(t *testing.T) {
 		expected int
 	}{
 		{
-			name:     "walk returns all images in a directory",
+			name:     "walk returns all media in a directory",
 			root:     workdir + "/test/data",
 			expected: 3,
 		},
 		{
-			name:     "walk returns all images in a directory and all its subdirectories",
+			name:     "walk returns all media in a directory and all its subdirectories",
 			root:     workdir,
 			expected: 3,
 		},
