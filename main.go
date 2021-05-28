@@ -5,6 +5,8 @@ import (
 	"github.com/fedragon/go-dedup/internal/db"
 	"log"
 	"os"
+	"runtime"
+	"sync"
 )
 
 func main() {
@@ -23,26 +25,47 @@ func main() {
 	}
 
 	media := app.Walk(os.Getenv("ROOT"))
-	var found int
-	var upserted int64
 
-	for m := range media {
-		if found > 0 && found%1000 == 0 {
-			log.Printf("Found %v media so far\n", found)
-		}
-
-		if m.Err != nil {
-			log.Fatalf(m.Err.Error())
-		}
-
-		n, err := db.Store(dbase, m)
-		if err != nil {
-			log.Fatalf(err.Error())
-		}
-
-		upserted += n
-		found++
+	numWorkers := runtime.NumCPU()
+	workers := make([]<-chan int64, numWorkers)
+	for i := 0; i < numWorkers; i++ {
+		workers[i] = db.StoreAll(dbase, media)
 	}
 
-	log.Printf("Found %v media, upserted %v\n", found, upserted)
+	done := make(chan struct{})
+	defer close(done)
+
+	var upserted int64
+	for i := range merge(done, workers...) {
+		if upserted > 0 && upserted%1000 == 0 {
+			log.Printf("upserted %v so far\n", upserted)
+		}
+		upserted += i
+	}
+}
+
+func merge(done <-chan struct{}, channels ...<-chan int64) <-chan int64 {
+	var wg sync.WaitGroup
+
+	wg.Add(len(channels))
+	media := make(chan int64)
+	multiplex := func(c <-chan int64) {
+		defer wg.Done()
+		for i := range c {
+			select {
+			case <-done:
+
+				return
+			case media <- i:
+			}
+		}
+	}
+	for _, c := range channels {
+		go multiplex(c)
+	}
+	go func() {
+		wg.Wait()
+		close(media)
+	}()
+	return media
 }

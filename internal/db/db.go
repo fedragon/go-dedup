@@ -34,7 +34,30 @@ func Migrate(db *sql.DB, path string) error {
 	return nil
 }
 
-func Store(db *sql.DB, m internal.Media) (int64, error) {
+func StoreAll(db *sql.DB, ms <-chan internal.Media) <-chan int64 {
+	updated := make(chan int64)
+
+	go func() {
+		defer close(updated)
+
+		for m := range ms {
+			if m.Err != nil {
+				log.Fatalf(m.Err.Error())
+			}
+
+			n, err := store(db, m)
+			if err != nil {
+				log.Fatalf(err.Error())
+			}
+
+			updated <- n
+		}
+	}()
+
+	return updated
+}
+
+func store(db *sql.DB, m internal.Media) (int64, error) {
 	tx, err := db.Begin()
 	if err != nil {
 		return 0, err

@@ -4,6 +4,8 @@ import (
 	"os"
 	"reflect"
 	"testing"
+
+	_ "github.com/fedragon/go-dedup/testing"
 )
 
 func TestHash(t *testing.T) {

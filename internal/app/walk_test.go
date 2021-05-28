@@ -3,6 +3,8 @@ package app
 import (
 	"os"
 	"testing"
+
+	_ "github.com/fedragon/go-dedup/testing"
 )
 
 func TestWalk(t *testing.T) {

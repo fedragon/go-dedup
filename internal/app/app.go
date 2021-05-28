@@ -13,8 +13,10 @@ import (
 )
 
 const (
+	CR2  = ".cr2"
 	JPG  = ".jpg"
 	JPEG = ".jpeg"
+	MOV  = ".mov"
 	MP4  = ".mp4"
 	ORF  = ".orf"
 )
@@ -50,7 +52,7 @@ func Walk(root string) <-chan internal.Media {
 			}
 
 			ext := strings.ToLower(filepath.Ext(d.Name()))
-			if ext == JPG || ext == JPEG || ext == MP4 || ext == ORF {
+			if ext == CR2 || ext == JPG || ext == JPEG || ext == MOV || ext == MP4 || ext == ORF {
 				bytes, err := hash(path)
 				if err != nil {
 					return err
