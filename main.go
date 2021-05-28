@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	dbase, err := db.Connect(os.Getenv("DB_PATH"))
+	dbase, err := db.Connect(os.Getenv("DB"))
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
@@ -18,28 +18,31 @@ func main() {
 		}
 	}()
 
-	if err := db.Migrate(dbase, os.Getenv("DB_MIGRATIONS_PATH")); err != nil {
+	if err := db.Migrate(dbase, os.Getenv("DB_MIGRATIONS")); err != nil {
 		log.Fatalf(err.Error())
 	}
 
 	media := app.Walk(os.Getenv("ROOT"))
-	var count int
+	var found int
+	var upserted int64
 
 	for m := range media {
-		if count%1000 == 0 {
-			log.Printf("Found %v media so far\n", count)
+		if found > 0 && found%1000 == 0 {
+			log.Printf("Found %v media so far\n", found)
 		}
 
 		if m.Err != nil {
 			log.Fatalf(m.Err.Error())
 		}
 
-		if err := db.Store(dbase, m); err != nil {
+		n, err := db.Store(dbase, m)
+		if err != nil {
 			log.Fatalf(err.Error())
 		}
 
-		count++
+		upserted += n
+		found++
 	}
 
-	log.Printf("Found %v media\n", count)
+	log.Printf("Found %v media, upserted %v\n", found, upserted)
 }

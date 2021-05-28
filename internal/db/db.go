@@ -34,14 +34,18 @@ func Migrate(db *sql.DB, path string) error {
 	return nil
 }
 
-func Store(db *sql.DB, m internal.Media) error {
+func Store(db *sql.DB, m internal.Media) (int64, error) {
 	tx, err := db.Begin()
 	if err != nil {
-		return err
+		return 0, err
 	}
-	stmt, err := tx.Prepare("insert into media(path, hash, unix_time) values(?, ?, ?)")
+	stmt, err := tx.Prepare(`
+		INSERT INTO media(path, hash, unix_time) VALUES(?, ?, ?) 
+		ON CONFLICT (path) DO UPDATE SET hash = excluded.hash, unix_time = excluded.unix_time 
+		WHERE excluded.hash <> media.hash
+	`)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer func() {
 		err := stmt.Close()
@@ -50,9 +54,14 @@ func Store(db *sql.DB, m internal.Media) error {
 		}
 	}()
 
-	if _, err = stmt.Exec(m.Path, fmt.Sprintf("%x", m.Hash), m.Timestamp.Unix()); err != nil {
-		return err
+	res, err := stmt.Exec(m.Path, fmt.Sprintf("%x", m.Hash), m.Timestamp.Unix())
+	if err != nil {
+		return 0, err
 	}
 
-	return tx.Commit()
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	return affected, tx.Commit()
 }
