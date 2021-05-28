@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"os"
@@ -30,7 +30,7 @@ func TestWalk(t *testing.T) {
 
 	for _, c := range cases {
 		var count int
-		for i := range walk(c.root) {
+		for i := range Walk(c.root) {
 			if i.Err != nil {
 				t.Errorf(i.Err.Error())
 			}
