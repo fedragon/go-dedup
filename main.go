@@ -29,7 +29,7 @@ func main() {
 	numWorkers := runtime.NumCPU()
 	workers := make([]<-chan int64, numWorkers)
 	for i := 0; i < numWorkers; i++ {
-		workers[i] = db.StoreAll(dbase, media)
+		workers[i] = db.Store(dbase, media)
 	}
 
 	done := make(chan struct{})
@@ -38,7 +38,7 @@ func main() {
 	var upserted int64
 	for i := range merge(done, workers...) {
 		if upserted > 0 && upserted%1000 == 0 {
-			log.Printf("upserted %v so far\n", upserted)
+			log.Printf("upserted %v rows so far\n", upserted)
 		}
 		upserted += i
 	}
