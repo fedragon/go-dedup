@@ -1,8 +1,9 @@
-package app
+package fs
 
 import (
 	"crypto/sha256"
 	"github.com/fedragon/go-dedup/internal"
+	"github.com/fedragon/go-dedup/internal/metrics"
 	"io"
 	"io/fs"
 	"log"
@@ -21,7 +22,7 @@ const (
 	ORF  = ".orf"
 )
 
-func hash(path string) ([]byte, error) {
+func hash(metrics *metrics.Metrics, path string) ([]byte, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -32,6 +33,9 @@ func hash(path string) ([]byte, error) {
 		}
 	}()
 
+	stop := metrics.Record("hash")
+	defer func() { _ = stop() }()
+
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
 		return nil, err
@@ -40,7 +44,7 @@ func hash(path string) ([]byte, error) {
 	return h.Sum(nil), nil
 }
 
-func Walk(root string) <-chan internal.Media {
+func Walk(metrics *metrics.Metrics, root string) <-chan internal.Media {
 	media := make(chan internal.Media)
 
 	go func() {
@@ -51,17 +55,21 @@ func Walk(root string) <-chan internal.Media {
 				return err
 			}
 
-			ext := strings.ToLower(filepath.Ext(d.Name()))
-			if ext == CR2 || ext == JPG || ext == JPEG || ext == MOV || ext == MP4 || ext == ORF {
-				bytes, err := hash(path)
-				if err != nil {
-					return err
-				}
+			_ = metrics.Increment("walk")
 
-				media <- internal.Media{
-					Path:      path,
-					Hash:      bytes,
-					Timestamp: time.Now(),
+			if !d.IsDir() {
+				ext := strings.ToLower(filepath.Ext(d.Name()))
+				if ext == CR2 || ext == JPG || ext == JPEG || ext == MOV || ext == MP4 || ext == ORF {
+					bytes, err := hash(metrics, path)
+					if err != nil {
+						return err
+					}
+
+					media <- internal.Media{
+						Path:      path,
+						Hash:      bytes,
+						Timestamp: time.Now(),
+					}
 				}
 			}
 

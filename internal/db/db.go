@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/fedragon/go-dedup/internal"
+	"github.com/fedragon/go-dedup/internal/metrics"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite3"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -34,7 +35,7 @@ func Migrate(db *sql.DB, path string) error {
 	return nil
 }
 
-func Store(db *sql.DB, media <-chan internal.Media) <-chan int64 {
+func Store(metrics *metrics.Metrics, db *sql.DB, media <-chan internal.Media) <-chan int64 {
 	updated := make(chan int64)
 
 	go func() {
@@ -45,10 +46,12 @@ func Store(db *sql.DB, media <-chan internal.Media) <-chan int64 {
 				log.Fatalf(m.Err.Error())
 			}
 
+			stop := metrics.Record("store")
 			n, err := store(db, m)
 			if err != nil {
 				log.Fatalf(err.Error())
 			}
+			_ = stop()
 
 			updated <- n
 		}

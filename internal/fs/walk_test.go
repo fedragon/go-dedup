@@ -1,6 +1,7 @@
-package app
+package fs
 
 import (
+	"github.com/fedragon/go-dedup/internal/metrics"
 	"os"
 	"testing"
 
@@ -8,6 +9,7 @@ import (
 )
 
 func TestWalk(t *testing.T) {
+	mx := metrics.NoMetrics()
 	workdir, err := os.Getwd()
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -32,7 +34,7 @@ func TestWalk(t *testing.T) {
 
 	for _, c := range cases {
 		var count int
-		for i := range Walk(c.root) {
+		for i := range Walk(mx, c.root) {
 			if i.Err != nil {
 				t.Errorf(i.Err.Error())
 			}

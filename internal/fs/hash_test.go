@@ -1,12 +1,15 @@
-package app
+package fs
 
 import (
+	"github.com/fedragon/go-dedup/internal/metrics"
 	"os"
 	"reflect"
 	"testing"
 
 	_ "github.com/fedragon/go-dedup/testing"
 )
+
+var mx = metrics.NoMetrics()
 
 func TestHash(t *testing.T) {
 	workdir, err := os.Getwd()
@@ -41,11 +44,11 @@ func TestHash(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		a, err := hash(c.pathA)
+		a, err := hash(mx, c.pathA)
 		if err != nil {
 			t.Errorf(err.Error())
 		}
-		b, err := hash(c.pathB)
+		b, err := hash(mx, c.pathB)
 		if err != nil {
 			t.Errorf(err.Error())
 		}
@@ -64,7 +67,7 @@ func BenchmarkHash(b *testing.B) {
 	}
 
 	for i := 0; i < b.N; i++ {
-		_, err := hash(workdir + "/test/data/doge.jpg")
+		_, err := hash(mx, workdir + "/test/data/doge.jpg")
 		if err != nil {
 			b.Errorf(err.Error())
 		}

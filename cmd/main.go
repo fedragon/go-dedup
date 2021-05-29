@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/fedragon/go-dedup/internal/app"
 	"github.com/fedragon/go-dedup/internal/db"
+	"github.com/fedragon/go-dedup/internal/fs"
+	"github.com/fedragon/go-dedup/internal/metrics"
 	"log"
 	"os"
 	"runtime"
@@ -24,12 +25,19 @@ func main() {
 		log.Fatalf(err.Error())
 	}
 
-	media := app.Walk(os.Getenv("ROOT"))
+	mx := metrics.NewMetrics()
+	defer func() {
+		if err := mx.Close(); err != nil {
+			log.Printf(err.Error())
+		}
+	}()
+
+	media := fs.Walk(mx, os.Getenv("ROOT"))
 
 	numWorkers := runtime.NumCPU()
 	workers := make([]<-chan int64, numWorkers)
 	for i := 0; i < numWorkers; i++ {
-		workers[i] = db.Store(dbase, media)
+		workers[i] = db.Store(mx, dbase, media)
 	}
 
 	done := make(chan struct{})
