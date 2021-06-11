@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/fedragon/go-dedup/internal/db"
+	dedb "github.com/fedragon/go-dedup/internal/db"
 	"github.com/fedragon/go-dedup/internal/metrics"
 	"github.com/fedragon/go-dedup/pkg"
 	"log"
@@ -9,19 +9,15 @@ import (
 )
 
 func main() {
-	dbase, err := db.Connect(os.Getenv("DB"))
+	db, err := dedb.Connect(os.Getenv("DB"))
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
 	defer func() {
-		if err := dbase.Close(); err != nil {
+		if err := db.Close(); err != nil {
 			log.Printf(err.Error())
 		}
 	}()
-
-	if err := db.Migrate(dbase, os.Getenv("DB_MIGRATIONS")); err != nil {
-		log.Fatalf(err.Error())
-	}
 
 	mx := metrics.NewMetrics()
 	defer func() {
@@ -30,5 +26,5 @@ func main() {
 		}
 	}()
 
-	pkg.Index(mx, dbase, os.Getenv("ROOT"))
+	pkg.Index(mx, db, os.Getenv("ROOT"))
 }

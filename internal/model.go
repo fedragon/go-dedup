@@ -3,8 +3,8 @@ package internal
 import "time"
 
 type Media struct {
+	Hash      []byte `json:"-"`
 	Path      string
-	Hash      []byte
 	Timestamp time.Time
-	Err       error
+	Err       error `json:"-"`
 }

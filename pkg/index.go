@@ -1,8 +1,8 @@
 package pkg
 
 import (
-	"database/sql"
-	"github.com/fedragon/go-dedup/internal/db"
+	"github.com/boltdb/bolt"
+	dedb "github.com/fedragon/go-dedup/internal/db"
 	"github.com/fedragon/go-dedup/internal/fs"
 	"github.com/fedragon/go-dedup/internal/metrics"
 	"log"
@@ -10,13 +10,13 @@ import (
 	"sync"
 )
 
-func Index(mx *metrics.Metrics, dbase *sql.DB, root string) {
+func Index(mx *metrics.Metrics, db *bolt.DB, root string) {
 	media := fs.Walk(mx, root)
 
 	numWorkers := runtime.NumCPU()
 	workers := make([]<-chan int64, numWorkers)
 	for i := 0; i < numWorkers; i++ {
-		workers[i] = db.Store(mx, dbase, media)
+		workers[i] = dedb.Store(mx, db, media)
 	}
 
 	done := make(chan struct{})
@@ -29,6 +29,7 @@ func Index(mx *metrics.Metrics, dbase *sql.DB, root string) {
 		}
 		upserted += i
 	}
+	log.Printf("upserted %v rows in total\n", upserted)
 }
 
 func merge(done <-chan struct{}, channels ...<-chan int64) <-chan int64 {
