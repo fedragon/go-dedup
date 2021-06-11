@@ -16,6 +16,13 @@ import (
 )
 
 func Dedup(mx *metrics.Metrics, db *bolt.DB, targetDir string) {
+	if _, err := os.Stat(targetDir); os.IsNotExist(err) {
+		if err := os.MkdirAll(targetDir, os.ModePerm); err != nil {
+			log.Fatalf("unable to create target directory %v\n", targetDir)
+		}
+
+	}
+
 	media := dedb.List(db)
 
 	numWorkers := runtime.NumCPU()
