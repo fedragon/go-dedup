@@ -22,6 +22,10 @@ const (
 	ORF  = ".orf"
 )
 
+var (
+	types = []string{CR2, JPG, JPEG, MOV, MP4, ORF}
+)
+
 func hash(metrics *metrics.Metrics, path string) ([]byte, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -50,6 +54,11 @@ func Walk(metrics *metrics.Metrics, root string) <-chan internal.Media {
 	go func() {
 		defer close(media)
 
+		typesMap := make(map[string]int)
+		for _, t := range types {
+			typesMap[t] = 1
+		}
+
 		err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
@@ -59,7 +68,7 @@ func Walk(metrics *metrics.Metrics, root string) <-chan internal.Media {
 
 			if !d.IsDir() {
 				ext := strings.ToLower(filepath.Ext(d.Name()))
-				if ext == CR2 || ext == JPG || ext == JPEG || ext == MOV || ext == MP4 || ext == ORF {
+				if typesMap[ext] > 0 {
 					bytes, err := hash(metrics, path)
 					if err != nil {
 						return err

@@ -91,3 +91,44 @@ func store(db *sql.DB, m internal.Media) (int64, error) {
 	}
 	return affected, tx.Commit()
 }
+
+func List(db *sql.DB, offset int, limit int) (map[string][]MediaRow, error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return nil, err
+	}
+
+	stmt, err := tx.Prepare(`
+		select m.ROWID, a.hash, m.path
+			from (
+				select hash, count(*) as total
+					from media
+				group by hash
+			) a
+			join media m using (hash)
+			where a.total > 1
+			order by 2, 3
+			limit ? offset ?`)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := stmt.Query(limit, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[string][]MediaRow)
+	for rows.Next() {
+		var rowID int64
+		var hash, path string
+
+		if err := rows.Scan(&rowID, &hash, &path); err != nil {
+			return nil, err
+		}
+
+		result[hash] = append(result[hash], MediaRow{RowId: rowID, Path: path})
+	}
+
+	return result, nil
+}

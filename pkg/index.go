@@ -41,7 +41,6 @@ func merge(done <-chan struct{}, channels ...<-chan int64) <-chan int64 {
 		for i := range c {
 			select {
 			case <-done:
-
 				return
 			case media <- i:
 			}
