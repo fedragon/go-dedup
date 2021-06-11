@@ -2,17 +2,20 @@ package db
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/fedragon/go-dedup/internal"
 	"github.com/fedragon/go-dedup/internal/metrics"
 	"log"
 )
 
+var bucketName = []byte("Hashes")
+
 func Connect(path string) (*bolt.DB, error) {
 	return bolt.Open(path, 0600, nil)
 }
 
-func Store(metrics *metrics.Metrics, db *bolt.DB, media <-chan internal.Media) <-chan int64 {
+func Store(metrics *metrics.Metrics, id int, db *bolt.DB, media <-chan internal.Media) <-chan int64 {
 	updated := make(chan int64)
 
 	go func() {
@@ -23,7 +26,7 @@ func Store(metrics *metrics.Metrics, db *bolt.DB, media <-chan internal.Media) <
 				log.Fatalf(m.Err.Error())
 			}
 
-			stop := metrics.Record("store")
+			stop := metrics.Record(fmt.Sprintf("worker-%d.store", id))
 			err := store(db, m)
 			if err != nil {
 				log.Fatalf(err.Error())
@@ -39,7 +42,7 @@ func Store(metrics *metrics.Metrics, db *bolt.DB, media <-chan internal.Media) <
 
 func store(db *bolt.DB, m internal.Media) error {
 	return db.Update(func(tx *bolt.Tx) error {
-		bucket, err := tx.CreateBucketIfNotExists([]byte("Hashes"))
+		bucket, err := tx.CreateBucketIfNotExists(bucketName)
 		if err != nil {
 			return err
 		}
@@ -72,4 +75,37 @@ func store(db *bolt.DB, m internal.Media) error {
 
 		return nil
 	})
+}
+
+func List(db *bolt.DB) <-chan internal.AggregatedMedia {
+	media := make(chan internal.AggregatedMedia)
+
+	go func() {
+		defer close(media)
+
+		if err := db.View(func(tx *bolt.Tx) error {
+			b := tx.Bucket(bucketName)
+
+			if b == nil {
+				return fmt.Errorf("bucket %s doesn't exist", string(bucketName))
+			}
+
+			err := b.ForEach(func(k, v []byte) error {
+				var stored []internal.Media
+				err := json.Unmarshal(v, &stored)
+				if err != nil {
+					return err
+				}
+
+				media <- internal.AggregatedMedia{Hash: k, Medias: stored}
+				return nil
+			})
+
+			return err
+		}); err != nil {
+			log.Fatalf("Error while reading from bucket: %v", err)
+		}
+	}()
+
+	return media
 }

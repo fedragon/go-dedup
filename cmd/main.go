@@ -3,7 +3,8 @@ package main
 import (
 	dedb "github.com/fedragon/go-dedup/internal/db"
 	"github.com/fedragon/go-dedup/internal/metrics"
-	"github.com/fedragon/go-dedup/pkg"
+	"github.com/fedragon/go-dedup/pkg/dedup"
+	"github.com/fedragon/go-dedup/pkg/index"
 	"log"
 	"os"
 )
@@ -26,5 +27,7 @@ func main() {
 		}
 	}()
 
-	pkg.Index(mx, db, os.Getenv("ROOT"))
+	index.Index(mx, db, os.Getenv("ROOT"))
+
+	dedup.Dedup(mx, db, os.Getenv("TARGET"))
 }

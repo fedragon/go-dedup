@@ -1,5 +1,7 @@
 github.com/boltdb/bolt v1.3.1 h1:JQmyP4ZBrce+ZQu0dY660FMfatumYDLun9hBCUVIkF4=
 github.com/boltdb/bolt v1.3.1/go.mod h1:clJnj/oiGkjum5o1McbSZDSLxVThjynRyGBgiAx27Ps=
+github.com/natefinch/atomic v0.0.0-20200526193002-18c0533a5b09 h1:DXR0VtCesBD2ss3toN9OEeXszpQmW9dc3SvUbUfiBC0=
+github.com/natefinch/atomic v0.0.0-20200526193002-18c0533a5b09/go.mod h1:1rLVY/DWf3U6vSZgH16S7pymfrhK2lcUlXjgGglw/lY=
 github.com/netdata/go-statsd v0.0.5 h1:TNUTIdd9G/aLEi67l23U4lZfrujEBVfe6SqAcqnjWQw=
 github.com/netdata/go-statsd v0.0.5/go.mod h1:1f3YPXeOwfPBm8W7Rj6l6A6umSaIfWu4MortwOGMBk0=
 golang.org/x/sys v0.0.0-20210611083646-a4fc73990273 h1:faDu4veV+8pcThn4fewv6TVlNCezafGoC1gM/mxQLbQ=

@@ -8,3 +8,8 @@ type Media struct {
 	Timestamp time.Time
 	Err       error `json:"-"`
 }
+
+type AggregatedMedia struct {
+	Hash   []byte
+	Medias []Media
+}
