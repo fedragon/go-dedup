@@ -13,10 +13,12 @@ import (
 	"path/filepath"
 )
 
-func Dedup(mx *metrics.Metrics, db *bolt.DB, numWorkers int, targetDir string) {
-	if _, err := os.Stat(targetDir); os.IsNotExist(err) {
-		if err := os.MkdirAll(targetDir, os.ModePerm); err != nil {
-			log.Fatalf("unable to create target directory %v\n", targetDir)
+func Dedup(mx *metrics.Metrics, db *bolt.DB, numWorkers int, target string) {
+	log.Printf("Starting to deduplicate to %v\n", target)
+
+	if _, err := os.Stat(target); os.IsNotExist(err) {
+		if err := os.MkdirAll(target, os.ModePerm); err != nil {
+			log.Fatalf("unable to create target directory %v\n", target)
 		}
 	}
 
@@ -24,7 +26,7 @@ func Dedup(mx *metrics.Metrics, db *bolt.DB, numWorkers int, targetDir string) {
 
 	workers := make([]<-chan int64, numWorkers)
 	for i := 0; i < numWorkers; i++ {
-		workers[i] = dedup(mx, i, targetDir, media)
+		workers[i] = dedup(mx, i, target, media)
 	}
 
 	done := make(chan struct{})
@@ -56,9 +58,9 @@ func dedup(mx *metrics.Metrics, id int, targetDir string, media <-chan internal.
 					}
 
 					target := filepath.Join(targetDir, filepath.Base(x.Path))
-					stop := mx.Record(fmt.Sprintf("worker-%d.dedup", id))
-
 					log.Printf("[worker-%d] moving file %v to %v\n", id, x.Path, target)
+
+					stop := mx.Record(fmt.Sprintf("worker-%d.dedup", id))
 					err = atomic.WriteFile(target, bufio.NewReader(buf))
 					_ = stop()
 

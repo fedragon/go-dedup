@@ -27,21 +27,25 @@ func Store(metrics *metrics.Metrics, id int, db *bolt.DB, media <-chan internal.
 			}
 
 			stop := metrics.Record(fmt.Sprintf("worker-%d.store", id))
-			err := store(db, m)
+			stored, err := store(db, m)
 			if err != nil {
 				log.Fatalf(err.Error())
 			}
 			_ = stop()
 
-			updated <- 1
+			if stored {
+				updated <- 1
+			}
 		}
 	}()
 
 	return updated
 }
 
-func store(db *bolt.DB, m internal.Media) error {
-	return db.Update(func(tx *bolt.Tx) error {
+func store(db *bolt.DB, m internal.Media) (bool, error) {
+	stored := true
+
+	err := db.Update(func(tx *bolt.Tx) error {
 		bucket, err := tx.CreateBucketIfNotExists(bucketName)
 		if err != nil {
 			return err
@@ -57,8 +61,8 @@ func store(db *bolt.DB, m internal.Media) error {
 		}
 
 		for _, x := range ms {
-			if x.Path == m.Path {
-				// path already exists
+			if x.Path == m.Path { // path already exists
+				stored = false
 				return nil
 			}
 		}
@@ -75,6 +79,12 @@ func store(db *bolt.DB, m internal.Media) error {
 
 		return nil
 	})
+
+	if err != nil {
+		return false, err
+	}
+
+	return stored, nil
 }
 
 func List(db *bolt.DB) <-chan internal.AggregatedMedia {
@@ -103,7 +113,7 @@ func List(db *bolt.DB) <-chan internal.AggregatedMedia {
 
 			return err
 		}); err != nil {
-			log.Fatalf("Error while reading from bucket: %v", err)
+			log.Fatalf("error while reading from bucket: %v\n", err)
 		}
 	}()
 

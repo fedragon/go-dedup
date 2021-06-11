@@ -8,8 +8,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func Index(mx *metrics.Metrics, db *bolt.DB, numWorkers int, root string) {
-	media := fs.Walk(mx, root)
+func Index(mx *metrics.Metrics, db *bolt.DB, numWorkers int, source string) {
+	log.Printf("Starting to index %v\n", source)
+
+	media := fs.Walk(mx, source)
 
 	workers := make([]<-chan int64, numWorkers)
 	for i := 0; i < numWorkers; i++ {

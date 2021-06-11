@@ -27,6 +27,9 @@ var (
 )
 
 func hash(metrics *metrics.Metrics, path string) ([]byte, error) {
+	stop := metrics.Record("hash")
+	defer func() { _ = stop() }()
+
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -36,9 +39,6 @@ func hash(metrics *metrics.Metrics, path string) ([]byte, error) {
 			log.Printf(err.Error())
 		}
 	}()
-
-	stop := metrics.Record("hash")
-	defer func() { _ = stop() }()
 
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {

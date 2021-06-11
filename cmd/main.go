@@ -12,10 +12,10 @@ import (
 func main() {
 	var cfg struct {
 		DbPath     string
-		From       string
-		To         string
+		Source     string
+		Target     string
 		NumWorkers int  `envconfig:"optional"`
-		DryRun     bool `envconfig:"default=false"`
+		DryRun     bool `envconfig:"optional,default=false"`
 	}
 
 	if err := envconfig.Init(&cfg); err != nil {
@@ -23,6 +23,9 @@ func main() {
 	}
 
 	log.Printf("Using configuration: %+v\n", cfg)
+	if cfg.DryRun {
+		log.Println("Running in DRY-RUN mode: duplicate files will not be moved")
+	}
 
 	db, err := dedb.Connect(cfg.DbPath)
 	if err != nil {
@@ -45,14 +48,11 @@ func main() {
 	if numWorkers == 0 {
 		numWorkers = runtime.NumCPU()
 	}
-	log.Printf("Using %v concurrent goroutines\n", numWorkers)
+	log.Printf("Using %v goroutines\n", numWorkers)
 
-	pkg.Index(mx, db, numWorkers, cfg.From)
+	pkg.Index(mx, db, numWorkers, cfg.Source)
 
-	if cfg.DryRun {
-		log.Println("Dry run: not going to move duplicates.")
-		return
+	if !cfg.DryRun {
+		pkg.Dedup(mx, db, numWorkers, cfg.Target)
 	}
-
-	pkg.Dedup(mx, db, numWorkers, cfg.To)
 }
