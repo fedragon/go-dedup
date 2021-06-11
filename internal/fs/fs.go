@@ -6,7 +6,7 @@ import (
 	"github.com/fedragon/go-dedup/internal/metrics"
 	"io"
 	"io/fs"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
 	"strings"

@@ -6,7 +6,7 @@ import (
 	"github.com/fedragon/go-dedup/internal/fs"
 	"github.com/fedragon/go-dedup/internal/metrics"
 	"github.com/fedragon/go-dedup/pkg"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"runtime"
 )
 

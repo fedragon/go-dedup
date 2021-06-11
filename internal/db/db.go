@@ -6,7 +6,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/fedragon/go-dedup/internal"
 	"github.com/fedragon/go-dedup/internal/metrics"
-	"log"
+	log "github.com/sirupsen/logrus"
 )
 
 var bucketName = []byte("Hashes")

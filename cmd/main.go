@@ -5,7 +5,7 @@ import (
 	"github.com/fedragon/go-dedup/internal/metrics"
 	"github.com/fedragon/go-dedup/pkg/dedup"
 	"github.com/fedragon/go-dedup/pkg/index"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"os"
 )
 

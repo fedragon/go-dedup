@@ -2,7 +2,7 @@ package metrics
 
 import (
 	"github.com/netdata/go-statsd"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"time"
 )
 
