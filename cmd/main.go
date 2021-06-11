@@ -5,12 +5,26 @@ import (
 	"github.com/fedragon/go-dedup/internal/metrics"
 	"github.com/fedragon/go-dedup/pkg"
 	log "github.com/sirupsen/logrus"
-	"os"
-	"strconv"
+	"github.com/vrischmann/envconfig"
+	"runtime"
 )
 
 func main() {
-	db, err := dedb.Connect(os.Getenv("DB"))
+	var cfg struct {
+		DbPath     string
+		From       string
+		To         string
+		NumWorkers int  `envconfig:"optional"`
+		DryRun     bool `envconfig:"default=false"`
+	}
+
+	if err := envconfig.Init(&cfg); err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	log.Printf("Using configuration: %+v\n", cfg)
+
+	db, err := dedb.Connect(cfg.DbPath)
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
@@ -27,11 +41,18 @@ func main() {
 		}
 	}()
 
-	numWorkers, err := strconv.Atoi(os.Getenv("NUM_WORKERS"))
-	if err != nil {
-		log.Fatalf("Invalid number of workers: %v\n", err.Error())
+	numWorkers := cfg.NumWorkers
+	if numWorkers == 0 {
+		numWorkers = runtime.NumCPU()
+	}
+	log.Printf("Using %v concurrent goroutines\n", numWorkers)
+
+	pkg.Index(mx, db, numWorkers, cfg.From)
+
+	if cfg.DryRun {
+		log.Println("Dry run: not going to move duplicates.")
+		return
 	}
 
-	pkg.Index(mx, db, numWorkers, os.Getenv("ROOT"))
-	pkg.Dedup(mx, db, numWorkers, os.Getenv("TARGET"))
+	pkg.Dedup(mx, db, numWorkers, cfg.To)
 }
