@@ -1,4 +1,4 @@
-package dedup
+package pkg
 
 import (
 	"bufio"
@@ -7,25 +7,21 @@ import (
 	"github.com/fedragon/go-dedup/internal"
 	dedb "github.com/fedragon/go-dedup/internal/db"
 	"github.com/fedragon/go-dedup/internal/metrics"
-	"github.com/fedragon/go-dedup/pkg"
 	"github.com/natefinch/atomic"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
-	"runtime"
 )
 
-func Dedup(mx *metrics.Metrics, db *bolt.DB, targetDir string) {
+func Dedup(mx *metrics.Metrics, db *bolt.DB, numWorkers int, targetDir string) {
 	if _, err := os.Stat(targetDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(targetDir, os.ModePerm); err != nil {
 			log.Fatalf("unable to create target directory %v\n", targetDir)
 		}
-
 	}
 
 	media := dedb.List(db)
 
-	numWorkers := runtime.NumCPU()
 	workers := make([]<-chan int64, numWorkers)
 	for i := 0; i < numWorkers; i++ {
 		workers[i] = dedup(mx, i, targetDir, media)
@@ -35,7 +31,7 @@ func Dedup(mx *metrics.Metrics, db *bolt.DB, targetDir string) {
 	defer close(done)
 
 	var deduped int64
-	for i := range pkg.Merge(done, workers...) {
+	for i := range Merge(done, workers...) {
 		if deduped > 0 && deduped%1000 == 0 {
 			log.Printf("Deduplicated %v files so far\n", deduped)
 		}

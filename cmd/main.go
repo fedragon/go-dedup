@@ -3,10 +3,10 @@ package main
 import (
 	dedb "github.com/fedragon/go-dedup/internal/db"
 	"github.com/fedragon/go-dedup/internal/metrics"
-	"github.com/fedragon/go-dedup/pkg/dedup"
-	"github.com/fedragon/go-dedup/pkg/index"
+	"github.com/fedragon/go-dedup/pkg"
 	log "github.com/sirupsen/logrus"
 	"os"
+	"strconv"
 )
 
 func main() {
@@ -27,7 +27,11 @@ func main() {
 		}
 	}()
 
-	index.Index(mx, db, os.Getenv("ROOT"))
+	numWorkers, err := strconv.Atoi(os.Getenv("NUM_WORKERS"))
+	if err != nil {
+		log.Fatalf("Invalid number of workers: %v\n", err.Error())
+	}
 
-	dedup.Dedup(mx, db, os.Getenv("TARGET"))
+	pkg.Index(mx, db, numWorkers, os.Getenv("ROOT"))
+	pkg.Dedup(mx, db, numWorkers, os.Getenv("TARGET"))
 }
