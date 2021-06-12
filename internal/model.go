@@ -10,6 +10,6 @@ type Media struct {
 }
 
 type AggregatedMedia struct {
-	Hash   []byte
-	Medias []Media
+	Hash  []byte
+	Paths []string
 }

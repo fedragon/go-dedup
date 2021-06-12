@@ -51,7 +51,7 @@ func store(db *bolt.DB, m internal.Media) (bool, error) {
 			return err
 		}
 
-		var ms []internal.Media
+		var ms []string
 		bytes := bucket.Get(m.Hash)
 
 		if bytes != nil {
@@ -60,13 +60,13 @@ func store(db *bolt.DB, m internal.Media) (bool, error) {
 			}
 		}
 
-		for _, x := range ms {
-			if x.Path == m.Path { // path already exists
+		for _, p := range ms {
+			if p == m.Path { // path already exists
 				stored = false
 				return nil
 			}
 		}
-		ms = append(ms, m)
+		ms = append(ms, m.Path)
 
 		marshalled, err := json.Marshal(&ms)
 		if err != nil {
@@ -101,13 +101,13 @@ func List(db *bolt.DB) <-chan internal.AggregatedMedia {
 			}
 
 			err := b.ForEach(func(k, v []byte) error {
-				var stored []internal.Media
-				err := json.Unmarshal(v, &stored)
+				var paths []string
+				err := json.Unmarshal(v, &paths)
 				if err != nil {
 					return err
 				}
 
-				media <- internal.AggregatedMedia{Hash: k, Medias: stored}
+				media <- internal.AggregatedMedia{Hash: k, Paths: paths}
 				return nil
 			})
 

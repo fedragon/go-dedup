@@ -51,34 +51,34 @@ func dedup(mx *metrics.Metrics, id int, dryRun bool, targetDir string, media <-c
 		defer close(moved)
 
 		for m := range media {
-			if len(m.Medias) > 1 {
-				for _, x := range m.Medias[1:] {
-					target := filepath.Join(targetDir, filepath.Base(x.Path))
+			if len(m.Paths) > 1 {
+				for _, path := range m.Paths[1:] {
+					target := filepath.Join(targetDir, filepath.Base(path))
 
 					if dryRun {
-						log.Printf("would have executed: mv %v %v\n", x.Path, target)
+						log.Printf("would have executed: mv %v %v\n", path, target)
 						moved <- 1
 
 						continue
 					}
 
-					buf, err := os.Open(x.Path)
+					buf, err := os.Open(path)
 					if err != nil {
 						log.Fatal(err)
 					}
 
-					log.Printf("[worker-%d] moving file %v to %v\n", id, x.Path, target)
+					log.Printf("[worker-%d] moving file %v to %v\n", id, path, target)
 					stop := mx.Record(fmt.Sprintf("worker-%d.dedup", id))
 					err = atomic.WriteFile(target, bufio.NewReader(buf))
 					_ = stop()
 
 					if err != nil {
-						log.Printf("[worker-%d] cannot atomically move file %v to %v: %v\n", id, x.Path, target, err)
+						log.Printf("[worker-%d] cannot atomically move file %v to %v: %v\n", id, path, target, err)
 						continue
 					}
 
-					if err = os.Remove(x.Path); err != nil {
-						log.Printf("[worker-%d] cannot remove file %v: %v\n", id, x.Path, err)
+					if err = os.Remove(path); err != nil {
+						log.Printf("[worker-%d] cannot remove file %v: %v\n", id, path, err)
 						continue
 					}
 
