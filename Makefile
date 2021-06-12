@@ -1,5 +1,5 @@
 .PHONY: test
-default: build
+default: all
 
 benchmark:
 	go test -bench=. ./...
@@ -7,8 +7,10 @@ benchmark:
 test:
 	go test -v -race -count=1 ./...
 
-build: test benchmark
-	go build -o bin/go-dedup cmd/main.go
+build:
+	go build -o bin/dedup cmd/main.go
+
+all:  build test benchmark
 
 run: build
-	time ./bin/go-dedup
+	time ./bin/dedup

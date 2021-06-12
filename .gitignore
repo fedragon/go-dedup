@@ -1,2 +1,2 @@
-go-dedup
+bin/dedup
 *.db

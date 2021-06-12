@@ -13,12 +13,14 @@ import (
 	"path/filepath"
 )
 
-func Dedup(mx *metrics.Metrics, db *bolt.DB, numWorkers int, target string) {
+func Dedup(mx *metrics.Metrics, db *bolt.DB, dryRun bool, numWorkers int, target string) {
 	log.Printf("Starting to deduplicate to %v\n", target)
 
-	if _, err := os.Stat(target); os.IsNotExist(err) {
-		if err := os.MkdirAll(target, os.ModePerm); err != nil {
-			log.Fatalf("unable to create target directory %v\n", target)
+	if !dryRun {
+		if _, err := os.Stat(target); os.IsNotExist(err) {
+			if err := os.MkdirAll(target, os.ModePerm); err != nil {
+				log.Fatalf("unable to create target directory %v\n", target)
+			}
 		}
 	}
 
@@ -26,7 +28,7 @@ func Dedup(mx *metrics.Metrics, db *bolt.DB, numWorkers int, target string) {
 
 	workers := make([]<-chan int64, numWorkers)
 	for i := 0; i < numWorkers; i++ {
-		workers[i] = dedup(mx, i, target, media)
+		workers[i] = dedup(mx, i, dryRun, target, media)
 	}
 
 	done := make(chan struct{})
@@ -42,8 +44,7 @@ func Dedup(mx *metrics.Metrics, db *bolt.DB, numWorkers int, target string) {
 	log.Printf("Deduplicated %v files in total\n", deduped)
 }
 
-// dedup moves duplicated files into target directory
-func dedup(mx *metrics.Metrics, id int, targetDir string, media <-chan internal.AggregatedMedia) <-chan int64 {
+func dedup(mx *metrics.Metrics, id int, dryRun bool, targetDir string, media <-chan internal.AggregatedMedia) <-chan int64 {
 	moved := make(chan int64)
 
 	go func() {
@@ -52,14 +53,21 @@ func dedup(mx *metrics.Metrics, id int, targetDir string, media <-chan internal.
 		for m := range media {
 			if len(m.Medias) > 1 {
 				for _, x := range m.Medias[1:] {
+					target := filepath.Join(targetDir, filepath.Base(x.Path))
+
+					if dryRun {
+						log.Printf("would have executed: mv %v %v\n", x.Path, target)
+						moved <- 1
+
+						continue
+					}
+
 					buf, err := os.Open(x.Path)
 					if err != nil {
 						log.Fatal(err)
 					}
 
-					target := filepath.Join(targetDir, filepath.Base(x.Path))
 					log.Printf("[worker-%d] moving file %v to %v\n", id, x.Path, target)
-
 					stop := mx.Record(fmt.Sprintf("worker-%d.dedup", id))
 					err = atomic.WriteFile(target, bufio.NewReader(buf))
 					_ = stop()
