@@ -34,7 +34,7 @@ func TestWalk(t *testing.T) {
 
 	for _, c := range cases {
 		var count int
-		for i := range Walk(mx, c.root) {
+		for i := range Walk(mx, c.root, []string{".jpg"}) {
 			if i.Err != nil {
 				t.Errorf(i.Err.Error())
 			}

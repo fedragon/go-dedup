@@ -13,19 +13,6 @@ import (
 	"time"
 )
 
-const (
-	CR2  = ".cr2"
-	JPG  = ".jpg"
-	JPEG = ".jpeg"
-	MOV  = ".mov"
-	MP4  = ".mp4"
-	ORF  = ".orf"
-)
-
-var (
-	types = []string{CR2, JPG, JPEG, MOV, MP4, ORF}
-)
-
 func hash(metrics *metrics.Metrics, path string) ([]byte, error) {
 	stop := metrics.Record("hash")
 	defer func() { _ = stop() }()
@@ -48,14 +35,14 @@ func hash(metrics *metrics.Metrics, path string) ([]byte, error) {
 	return h.Sum(nil), nil
 }
 
-func Walk(metrics *metrics.Metrics, root string) <-chan internal.Media {
+func Walk(metrics *metrics.Metrics, root string, fileTypes []string) <-chan internal.Media {
 	media := make(chan internal.Media)
 
 	go func() {
 		defer close(media)
 
 		typesMap := make(map[string]int)
-		for _, t := range types {
+		for _, t := range fileTypes {
 			typesMap[t] = 1
 		}
 

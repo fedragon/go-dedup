@@ -13,10 +13,11 @@ import (
 )
 
 const (
-	dbPathFlag = "db-path"
-	sourceFlag = "source-dir"
-	destFlag   = "dest-dir"
-	dryRunFlag = "dry-run"
+	dbPathFlag    = "db-path"
+	sourceFlag    = "source-dir"
+	destFlag      = "dest-dir"
+	fileTypesFlag = "file-types"
+	dryRunFlag    = "dry-run"
 )
 
 func main() {
@@ -46,6 +47,12 @@ func main() {
 				Value:   "./my.db",
 				EnvVars: []string{"DEDUP_DB_PATH"},
 				Usage:   "Path to the BoltDB file",
+			},
+			&cli.StringSliceFlag{
+				Name:    fileTypesFlag,
+				Value:   cli.NewStringSlice(".cr2", ".jpg", ".jpeg", ".mov", ".mp4", ".orf"),
+				EnvVars: []string{"DEDUP_FILE_TYPES"},
+				Usage:   "Media file types to be indexed",
 			},
 			&cli.BoolFlag{
 				Name:    dryRunFlag,
@@ -101,7 +108,7 @@ func main() {
 		if err != nil {
 			log.Fatalf(err.Error())
 		}
-		pkg.Index(mx, db, numWorkers, source)
+		pkg.Index(mx, db, c.StringSlice(fileTypesFlag), numWorkers, source)
 		pkg.Dedup(mx, db, dryRun, numWorkers, dest)
 
 		return nil

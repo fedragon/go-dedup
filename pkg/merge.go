@@ -17,12 +17,15 @@ func Merge(done <-chan struct{}, channels ...<-chan int64) <-chan int64 {
 			}
 		}
 	}
+
 	for _, c := range channels {
 		go multiplex(c)
 	}
+
 	go func() {
 		wg.Wait()
 		close(media)
 	}()
+
 	return media
 }

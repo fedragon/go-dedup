@@ -10,30 +10,25 @@ Recursively scans a directory for _media_ files and moves duplicates (if any) to
     # scans ~/Pictures for media files and prints all `mv` operations that would be performed, without executing them
     dedup --src=~/Pictures --dst=$TMPDIR/duplicates --dry-run
 
-It's also possible to configure the application using environment variables: run `dedup --help` to see all available options.
+## All available options
 
-## How it works
+    NAME:
+    dedup - a cli to deduplicate media files
 
-An execution runs two sequential stages:
+    USAGE:
+    dedup [global options]
 
-- index files
-- deduplicate files
+    VERSION:
+    0.1.0
 
-### Index files
-
-This stage recursively scans the _source_ directory for any media file: whenever it encounters a _media_ file, it computes a SHA256 hash based on the file contents and stores a key-value pair in a BoltDB bucket, which looks like this:
-
-```
-"00129cccac26ad1b0a1285f1a92049f6df572c9bc0a32d64914e486f572bfb0a": [ "~/somewhere/1.jpg", "~/somewhere-else/2.orc", ... ]
-```
-
-where the `key` is the computed hash and the value is a slice of paths pointing to all files that have that same hash (= duplicates).
-
-**Note:** if the BoltDB database already exists, it will be deleted at the beginning of this stage, before doing anything else; this is to ensure that the application starts from a clean state.
-
-### Deduplicate files
-
-This stage iterates over all the keys (= hashes) that have been created by the previous stage and, for each of them, moves any duplicate files to the _target_ directory.
+    GLOBAL OPTIONS:
+    --source-dir value, --src value  Absolute path of the directory to scan [$DEDUP_SRC_PATH]
+    --dest-dir value, --dst value    Absolute path of the directory to move duplicates to [$DEDUP_DST_PATH]
+    --db-path value, --db value      Path to the BoltDB file (default: "./my.db") [$DEDUP_DB_PATH]
+    --file-types value               Media file types to be indexed (default: ".cr2", ".jpg", ".jpeg", ".mov", ".mp4", ".orf") [$DEDUP_FILE_TYPES]
+    --dry-run mv                     Only print all mv operations that would be performed, without actually executing them (default: false) [$DEDUP_DRY_RUN]
+    --help, -h                       show help (default: false)
+    --version, -v                    print the version (default: false)
 
 ## How to build
 
