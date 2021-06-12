@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	dedb "github.com/fedragon/go-dedup/internal/db"
 	"github.com/fedragon/go-dedup/internal/metrics"
 	"github.com/fedragon/go-dedup/pkg"
@@ -65,6 +66,13 @@ func main() {
 		if err != nil {
 			log.Fatalf(err.Error())
 		}
+
+		if err := os.Remove(dbPath); err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				log.Fatalf("Unable to remove pre-existing database: %v\n", err.Error())
+			}
+		}
+
 		db, err := dedb.Connect(dbPath)
 		if err != nil {
 			log.Fatalf(err.Error())
@@ -101,6 +109,6 @@ func main() {
 
 	err := app.Run(os.Args)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf(err.Error())
 	}
 }
