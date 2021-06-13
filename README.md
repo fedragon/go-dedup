@@ -2,6 +2,10 @@
 
 Recursively scans a directory for _media_ files and moves duplicates (if any) to a user-defined directory.
 
+## Installation
+
+Grab one of the binaries from the Releases page.
+
 ## Usage
 
     # scans ~/Pictures for media files and moves any duplicate to $TMPDIR/duplicates
@@ -29,7 +33,3 @@ Recursively scans a directory for _media_ files and moves duplicates (if any) to
     --dry-run mv                     Only print all mv operations that would be performed, without actually executing them (default: false) [$DEDUP_DRY_RUN]
     --help, -h                       show help (default: false)
     --version, -v                    print the version (default: false)
-
-## How to build
-
-    make
