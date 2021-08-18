@@ -2,14 +2,15 @@ package main
 
 import (
 	"errors"
+	"os"
+	"runtime"
+
 	dedb "github.com/fedragon/go-dedup/internal/db"
 	"github.com/fedragon/go-dedup/internal/metrics"
 	"github.com/fedragon/go-dedup/pkg"
 	"github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
-	"os"
-	"runtime"
 )
 
 const (

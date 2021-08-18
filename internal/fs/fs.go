@@ -2,15 +2,16 @@ package fs
 
 import (
 	"crypto/sha256"
-	"github.com/fedragon/go-dedup/internal"
-	"github.com/fedragon/go-dedup/internal/metrics"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/fedragon/go-dedup/internal"
+	"github.com/fedragon/go-dedup/internal/metrics"
+	log "github.com/sirupsen/logrus"
 )
 
 func hash(metrics *metrics.Metrics, path string) ([]byte, error) {
@@ -71,7 +72,6 @@ func Walk(metrics *metrics.Metrics, root string, fileTypes []string) <-chan inte
 
 			return nil
 		})
-
 		if err != nil {
 			media <- internal.Media{Err: err}
 		}

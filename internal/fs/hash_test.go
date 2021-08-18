@@ -1,11 +1,11 @@
 package fs
 
 import (
-	"github.com/fedragon/go-dedup/internal/metrics"
 	"os"
 	"reflect"
 	"testing"
 
+	"github.com/fedragon/go-dedup/internal/metrics"
 	_ "github.com/fedragon/go-dedup/testing"
 )
 
@@ -67,7 +67,7 @@ func BenchmarkHash(b *testing.B) {
 	}
 
 	for i := 0; i < b.N; i++ {
-		_, err := hash(mx, workdir + "/test/data/doge.jpg")
+		_, err := hash(mx, workdir+"/test/data/doge.jpg")
 		if err != nil {
 			b.Errorf(err.Error())
 		}

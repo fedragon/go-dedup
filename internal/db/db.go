@@ -3,6 +3,7 @@ package db
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/boltdb/bolt"
 	"github.com/fedragon/go-dedup/internal"
 	"github.com/fedragon/go-dedup/internal/metrics"
@@ -12,7 +13,7 @@ import (
 var bucketName = []byte("Hashes")
 
 func Connect(path string) (*bolt.DB, error) {
-	return bolt.Open(path, 0600, nil)
+	return bolt.Open(path, 0o600, nil)
 }
 
 func Store(metrics *metrics.Metrics, id int, db *bolt.DB, media <-chan internal.Media) <-chan int64 {
@@ -79,7 +80,6 @@ func store(db *bolt.DB, m internal.Media) (bool, error) {
 
 		return nil
 	})
-
 	if err != nil {
 		return false, err
 	}

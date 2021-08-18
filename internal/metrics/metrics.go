@@ -1,9 +1,10 @@
 package metrics
 
 import (
+	"time"
+
 	"github.com/netdata/go-statsd"
 	log "github.com/sirupsen/logrus"
-	"time"
 )
 
 type Metrics struct {

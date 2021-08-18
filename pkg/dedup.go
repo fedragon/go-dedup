@@ -3,14 +3,15 @@ package pkg
 import (
 	"bufio"
 	"fmt"
+	"os"
+	"path/filepath"
+
 	"github.com/boltdb/bolt"
 	"github.com/fedragon/go-dedup/internal"
 	dedb "github.com/fedragon/go-dedup/internal/db"
 	"github.com/fedragon/go-dedup/internal/metrics"
 	"github.com/natefinch/atomic"
 	log "github.com/sirupsen/logrus"
-	"os"
-	"path/filepath"
 )
 
 func Dedup(mx *metrics.Metrics, db *bolt.DB, dryRun bool, numWorkers int, target string) {

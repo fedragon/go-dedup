@@ -1,10 +1,10 @@
 package fs
 
 import (
-	"github.com/fedragon/go-dedup/internal/metrics"
 	"os"
 	"testing"
 
+	"github.com/fedragon/go-dedup/internal/metrics"
 	_ "github.com/fedragon/go-dedup/testing"
 )
 
