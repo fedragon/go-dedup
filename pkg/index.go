@@ -9,7 +9,7 @@ import (
 )
 
 func Index(mx *metrics.Metrics, db *bolt.DB, fileTypes []string, numWorkers int, source string) {
-	log.Printf("Starting to index %v\n", source)
+	log.Printf("Indexing %v ...\n", source)
 
 	media := fs.Walk(mx, source, fileTypes)
 

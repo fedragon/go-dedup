@@ -2,6 +2,7 @@ package db
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/boltdb/bolt"
@@ -28,63 +29,56 @@ func Store(metrics *metrics.Metrics, id int, db *bolt.DB, media <-chan internal.
 			}
 
 			stop := metrics.Record(fmt.Sprintf("worker-%d.store", id))
-			stored, err := store(db, m)
-			if err != nil {
+			if err := store(db, m); err != nil {
 				log.Fatalf(err.Error())
 			}
 			_ = stop()
 
-			if stored {
-				updated <- 1
-			}
+			updated <- 1
 		}
 	}()
 
 	return updated
 }
 
-func store(db *bolt.DB, m internal.Media) (bool, error) {
-	stored := true
-
-	err := db.Update(func(tx *bolt.Tx) error {
+func store(db *bolt.DB, m internal.Media) error {
+	return db.Update(func(tx *bolt.Tx) error {
 		bucket, err := tx.CreateBucketIfNotExists(bucketName)
 		if err != nil {
 			return err
 		}
 
-		var ms []string
+		var entries map[string]bool
 		bytes := bucket.Get(m.Hash)
 
 		if bytes != nil {
-			if err = json.Unmarshal(bytes, &ms); err != nil {
+			if err = json.Unmarshal(bytes, &entries); err != nil {
 				return err
 			}
 		}
 
-		for _, p := range ms {
-			if p == m.Path { // path already exists
-				stored = false
-				return nil
+		exists := false
+		for path := range entries {
+			if path == m.Path {
+				entries[path] = true
+				exists = true
+				break
 			}
 		}
-		ms = append(ms, m.Path)
+		if !exists {
+			if entries == nil {
+				entries = make(map[string]bool)
+			}
+			entries[m.Path] = true
+		}
 
-		marshalled, err := json.Marshal(&ms)
+		marshalled, err := json.Marshal(&entries)
 		if err != nil {
 			return err
 		}
 
-		if err = bucket.Put(m.Hash, marshalled); err != nil {
-			return err
-		}
-
-		return nil
+		return bucket.Put(m.Hash, marshalled)
 	})
-	if err != nil {
-		return false, err
-	}
-
-	return stored, nil
 }
 
 func List(db *bolt.DB) <-chan internal.AggregatedMedia {
@@ -100,22 +94,69 @@ func List(db *bolt.DB) <-chan internal.AggregatedMedia {
 				return fmt.Errorf("bucket %s doesn't exist", string(bucketName))
 			}
 
-			err := b.ForEach(func(k, v []byte) error {
-				var paths []string
-				err := json.Unmarshal(v, &paths)
-				if err != nil {
+			return b.ForEach(func(k, v []byte) error {
+				var entries map[string]bool
+				if err := json.Unmarshal(v, &entries); err != nil {
 					return err
+				}
+
+				var paths []string
+				for k := range entries {
+					paths = append(paths, k)
 				}
 
 				media <- internal.AggregatedMedia{Hash: k, Paths: paths}
 				return nil
 			})
-
-			return err
 		}); err != nil {
 			log.Fatalf("error while reading from bucket: %v\n", err)
 		}
 	}()
 
 	return media
+}
+
+func Prune(db *bolt.DB) error {
+	return db.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(bucketName)
+		if bucket == nil {
+			return errors.New("bucket doesn't exist")
+		}
+
+		c := bucket.Cursor()
+		for hash, v := c.First(); hash != nil; hash, v = c.Next() {
+			var entries map[string]bool
+			if v != nil {
+				if err := json.Unmarshal(v, &entries); err != nil {
+					return err
+				}
+
+				if entries != nil {
+					var missing []string
+					for path, marked := range entries {
+						if marked {
+							entries[path] = false
+						} else {
+							missing = append(missing, path)
+						}
+					}
+					for _, path := range missing {
+						log.Printf("Pruned non-existing path: %s\n", path)
+						delete(entries, path)
+					}
+				}
+
+				marshalled, err := json.Marshal(&entries)
+				if err != nil {
+					return err
+				}
+
+				if err = bucket.Put(hash, marshalled); err != nil {
+					return err
+				}
+			}
+		}
+
+		return nil
+	})
 }

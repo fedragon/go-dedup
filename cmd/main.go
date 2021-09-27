@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"os"
 	"runtime"
 
@@ -75,12 +74,6 @@ func main() {
 			log.Fatalf(err.Error())
 		}
 
-		if err := os.Remove(dbPath); err != nil {
-			if !errors.Is(err, os.ErrNotExist) {
-				log.Fatalf("Unable to remove pre-existing database: %v\n", err.Error())
-			}
-		}
-
 		db, err := dedb.Connect(dbPath)
 		if err != nil {
 			log.Fatalf(err.Error())
@@ -109,7 +102,9 @@ func main() {
 		if err != nil {
 			log.Fatalf(err.Error())
 		}
+
 		pkg.Index(mx, db, c.StringSlice(fileTypesFlag), numWorkers, source)
+		pkg.Sweep(db)
 		pkg.Dedup(mx, db, dryRun, numWorkers, dest)
 
 		return nil

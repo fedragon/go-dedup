@@ -15,7 +15,7 @@ import (
 )
 
 func Dedup(mx *metrics.Metrics, db *bolt.DB, dryRun bool, numWorkers int, target string) {
-	log.Printf("Starting to deduplicate to %v\n", target)
+	log.Printf("Moving unique files to %v ...\n", target)
 
 	if !dryRun {
 		if _, err := os.Stat(target); os.IsNotExist(err) {
