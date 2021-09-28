@@ -76,18 +76,18 @@ func main() {
 
 		db, err := dedb.Connect(dbPath)
 		if err != nil {
-			log.Fatalf(err.Error())
+			log.Fatal(err.Error())
 		}
 		defer func() {
 			if err := db.Close(); err != nil {
-				log.Printf(err.Error())
+				log.Println(err.Error())
 			}
 		}()
 
 		mx := metrics.NewMetrics()
 		defer func() {
 			if err := mx.Close(); err != nil {
-				log.Printf(err.Error())
+				log.Println(err.Error())
 			}
 		}()
 
@@ -96,15 +96,17 @@ func main() {
 
 		source, err := homedir.Expand(c.String(sourceFlag))
 		if err != nil {
-			log.Fatalf(err.Error())
+			log.Fatal(err.Error())
 		}
 		dest, err := homedir.Expand(c.String(destFlag))
 		if err != nil {
-			log.Fatalf(err.Error())
+			log.Fatal(err.Error())
 		}
 
 		pkg.Index(mx, db, c.StringSlice(fileTypesFlag), numWorkers, source)
-		pkg.Sweep(db)
+		if err := pkg.Sweep(db); err != nil {
+			log.Fatal(err.Error())
+		}
 		pkg.Dedup(mx, db, dryRun, numWorkers, dest)
 
 		return nil
@@ -112,6 +114,6 @@ func main() {
 
 	err := app.Run(os.Args)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err.Error())
 	}
 }
