@@ -1,6 +1,6 @@
 # go-dedup
 
-Recursively scans a directory for _media_ files and moves duplicates (if any) to a user-defined directory.
+Recursively scans a directory for files of provided type(s) and moves duplicates (if any) to a user-defined directory. Scans for media files by default (details below).
 
 ## Installation
 

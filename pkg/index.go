@@ -12,9 +12,26 @@ func Index(db *bolt.DB, fileTypes []string, numWorkers int, source string) {
 
 	media := fs.Walk(source, fileTypes)
 
+	mark := func(entries map[string]bool, path string) {
+		exists := false
+		for p := range entries {
+			if p == path {
+				entries[path] = true
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			if entries == nil {
+				entries = make(map[string]bool)
+			}
+			entries[path] = true
+		}
+	}
+
 	workers := make([]<-chan int64, numWorkers)
 	for i := 0; i < numWorkers; i++ {
-		workers[i] = dedb.Store(i, db, media)
+		workers[i] = dedb.Store(db, media, mark)
 	}
 
 	done := make(chan struct{})

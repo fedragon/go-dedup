@@ -16,7 +16,7 @@ func Connect(path string) (*bolt.DB, error) {
 	return bolt.Open(path, 0o600, nil)
 }
 
-func Store(id int, db *bolt.DB, media <-chan internal.Media) <-chan int64 {
+func Store(db *bolt.DB, media <-chan internal.Media, mark func(map[string]bool, string)) <-chan int64 {
 	updated := make(chan int64)
 
 	go func() {
@@ -27,7 +27,7 @@ func Store(id int, db *bolt.DB, media <-chan internal.Media) <-chan int64 {
 				log.Fatalf(m.Err.Error())
 			}
 
-			if err := store(db, m); err != nil {
+			if err := store(db, m, mark); err != nil {
 				log.Fatalf(err.Error())
 			}
 
@@ -38,7 +38,7 @@ func Store(id int, db *bolt.DB, media <-chan internal.Media) <-chan int64 {
 	return updated
 }
 
-func store(db *bolt.DB, m internal.Media) error {
+func store(db *bolt.DB, m internal.Media, mark func(map[string]bool, string)) error {
 	return db.Update(func(tx *bolt.Tx) error {
 		bucket, err := tx.CreateBucketIfNotExists(bucketName)
 		if err != nil {
@@ -54,20 +54,7 @@ func store(db *bolt.DB, m internal.Media) error {
 			}
 		}
 
-		exists := false
-		for path := range entries {
-			if path == m.Path {
-				entries[path] = true
-				exists = true
-				break
-			}
-		}
-		if !exists {
-			if entries == nil {
-				entries = make(map[string]bool)
-			}
-			entries[m.Path] = true
-		}
+		mark(entries, m.Path)
 
 		marshalled, err := json.Marshal(&entries)
 		if err != nil {
@@ -97,7 +84,7 @@ func List(db *bolt.DB) <-chan internal.AggregatedMedia {
 					return err
 				}
 
-				var paths []string
+				paths := make([]string, 0, len(entries))
 				for k := range entries {
 					paths = append(paths, k)
 				}
@@ -113,7 +100,7 @@ func List(db *bolt.DB) <-chan internal.AggregatedMedia {
 	return media
 }
 
-func Prune(db *bolt.DB) error {
+func Sweep(db *bolt.DB, doSweep func(map[string]bool)) error {
 	return db.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(bucketName)
 		if bucket == nil {
@@ -128,20 +115,7 @@ func Prune(db *bolt.DB) error {
 					return err
 				}
 
-				if entries != nil {
-					var missing []string
-					for path, marked := range entries {
-						if marked {
-							entries[path] = false
-						} else {
-							missing = append(missing, path)
-						}
-					}
-					for _, path := range missing {
-						log.Printf("Pruned non-existing path: %s\n", path)
-						delete(entries, path)
-					}
-				}
+				doSweep(entries)
 
 				marshalled, err := json.Marshal(&entries)
 				if err != nil {
