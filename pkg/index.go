@@ -4,18 +4,17 @@ import (
 	"github.com/boltdb/bolt"
 	dedb "github.com/fedragon/go-dedup/internal/db"
 	"github.com/fedragon/go-dedup/internal/fs"
-	"github.com/fedragon/go-dedup/internal/metrics"
 	log "github.com/sirupsen/logrus"
 )
 
-func Index(mx *metrics.Metrics, db *bolt.DB, fileTypes []string, numWorkers int, source string) {
+func Index(db *bolt.DB, fileTypes []string, numWorkers int, source string) {
 	log.Printf("Indexing %v ...\n", source)
 
-	media := fs.Walk(mx, source, fileTypes)
+	media := fs.Walk(source, fileTypes)
 
 	workers := make([]<-chan int64, numWorkers)
 	for i := 0; i < numWorkers; i++ {
-		workers[i] = dedb.Store(mx, i, db, media)
+		workers[i] = dedb.Store(i, db, media)
 	}
 
 	done := make(chan struct{})

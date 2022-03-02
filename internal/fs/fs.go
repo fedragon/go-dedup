@@ -10,14 +10,10 @@ import (
 	"time"
 
 	"github.com/fedragon/go-dedup/internal"
-	"github.com/fedragon/go-dedup/internal/metrics"
 	log "github.com/sirupsen/logrus"
 )
 
-func hash(metrics *metrics.Metrics, path string) ([]byte, error) {
-	stop := metrics.Record("hash")
-	defer func() { _ = stop() }()
-
+func hash(path string) ([]byte, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -36,7 +32,7 @@ func hash(metrics *metrics.Metrics, path string) ([]byte, error) {
 	return h.Sum(nil), nil
 }
 
-func Walk(metrics *metrics.Metrics, root string, fileTypes []string) <-chan internal.Media {
+func Walk(root string, fileTypes []string) <-chan internal.Media {
 	media := make(chan internal.Media)
 
 	go func() {
@@ -52,12 +48,10 @@ func Walk(metrics *metrics.Metrics, root string, fileTypes []string) <-chan inte
 				return err
 			}
 
-			_ = metrics.Increment("walk")
-
 			if !d.IsDir() {
 				ext := strings.ToLower(filepath.Ext(d.Name()))
 				if typesMap[ext] > 0 {
-					bytes, err := hash(metrics, path)
+					bytes, err := hash(path)
 					if err != nil {
 						return err
 					}

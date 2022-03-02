@@ -4,12 +4,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/fedragon/go-dedup/internal/metrics"
 	_ "github.com/fedragon/go-dedup/testing"
 )
 
 func TestWalk(t *testing.T) {
-	mx := metrics.NoMetrics()
 	workdir, err := os.Getwd()
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -34,7 +32,7 @@ func TestWalk(t *testing.T) {
 
 	for _, c := range cases {
 		var count int
-		for i := range Walk(mx, c.root, []string{".jpg"}) {
+		for i := range Walk(c.root, []string{".jpg"}) {
 			if i.Err != nil {
 				t.Errorf(i.Err.Error())
 			}

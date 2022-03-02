@@ -7,7 +7,6 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/fedragon/go-dedup/internal"
-	"github.com/fedragon/go-dedup/internal/metrics"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -17,7 +16,7 @@ func Connect(path string) (*bolt.DB, error) {
 	return bolt.Open(path, 0o600, nil)
 }
 
-func Store(metrics *metrics.Metrics, id int, db *bolt.DB, media <-chan internal.Media) <-chan int64 {
+func Store(id int, db *bolt.DB, media <-chan internal.Media) <-chan int64 {
 	updated := make(chan int64)
 
 	go func() {
@@ -28,11 +27,9 @@ func Store(metrics *metrics.Metrics, id int, db *bolt.DB, media <-chan internal.
 				log.Fatalf(m.Err.Error())
 			}
 
-			stop := metrics.Record(fmt.Sprintf("worker-%d.store", id))
 			if err := store(db, m); err != nil {
 				log.Fatalf(err.Error())
 			}
-			_ = stop()
 
 			updated <- 1
 		}

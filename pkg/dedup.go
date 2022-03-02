@@ -2,19 +2,17 @@ package pkg
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/boltdb/bolt"
 	"github.com/fedragon/go-dedup/internal"
 	dedb "github.com/fedragon/go-dedup/internal/db"
-	"github.com/fedragon/go-dedup/internal/metrics"
 	"github.com/natefinch/atomic"
 	log "github.com/sirupsen/logrus"
 )
 
-func Dedup(mx *metrics.Metrics, db *bolt.DB, dryRun bool, numWorkers int, target string) {
+func Dedup(db *bolt.DB, dryRun bool, numWorkers int, target string) {
 	log.Printf("Moving unique files to %v ...\n", target)
 
 	if !dryRun {
@@ -29,7 +27,7 @@ func Dedup(mx *metrics.Metrics, db *bolt.DB, dryRun bool, numWorkers int, target
 
 	workers := make([]<-chan int64, numWorkers)
 	for i := 0; i < numWorkers; i++ {
-		workers[i] = dedup(mx, i, dryRun, target, media)
+		workers[i] = dedup(i, dryRun, target, media)
 	}
 
 	done := make(chan struct{})
@@ -45,7 +43,7 @@ func Dedup(mx *metrics.Metrics, db *bolt.DB, dryRun bool, numWorkers int, target
 	log.Printf("Deduplicated %v files in total\n", deduped)
 }
 
-func dedup(mx *metrics.Metrics, id int, dryRun bool, targetDir string, media <-chan internal.AggregatedMedia) <-chan int64 {
+func dedup(id int, dryRun bool, targetDir string, media <-chan internal.AggregatedMedia) <-chan int64 {
 	moved := make(chan int64)
 
 	go func() {
@@ -69,9 +67,7 @@ func dedup(mx *metrics.Metrics, id int, dryRun bool, targetDir string, media <-c
 					}
 
 					log.Printf("[worker-%d] moving file %v to %v\n", id, path, target)
-					stop := mx.Record(fmt.Sprintf("worker-%d.dedup", id))
 					err = atomic.WriteFile(target, bufio.NewReader(buf))
-					_ = stop()
 
 					if err != nil {
 						log.Printf("[worker-%d] cannot atomically move file %v to %v: %v\n", id, path, target, err)

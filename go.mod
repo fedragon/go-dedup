@@ -6,7 +6,6 @@ require (
 	github.com/boltdb/bolt v1.3.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/natefinch/atomic v0.0.0-20200526193002-18c0533a5b09
-	github.com/netdata/go-statsd v0.0.5
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.6.1 // indirect
 	github.com/urfave/cli/v2 v2.3.0

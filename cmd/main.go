@@ -5,7 +5,6 @@ import (
 	"runtime"
 
 	dedb "github.com/fedragon/go-dedup/internal/db"
-	"github.com/fedragon/go-dedup/internal/metrics"
 	"github.com/fedragon/go-dedup/pkg"
 	"github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
@@ -84,13 +83,6 @@ func main() {
 			}
 		}()
 
-		mx := metrics.NewMetrics()
-		defer func() {
-			if err := mx.Close(); err != nil {
-				log.Println(err.Error())
-			}
-		}()
-
 		numWorkers := runtime.NumCPU()
 		log.Printf("Using %v goroutines\n", numWorkers)
 
@@ -103,11 +95,11 @@ func main() {
 			log.Fatal(err.Error())
 		}
 
-		pkg.Index(mx, db, c.StringSlice(fileTypesFlag), numWorkers, source)
+		pkg.Index(db, c.StringSlice(fileTypesFlag), numWorkers, source)
 		if err := pkg.Sweep(db); err != nil {
 			log.Fatal(err.Error())
 		}
-		pkg.Dedup(mx, db, dryRun, numWorkers, dest)
+		pkg.Dedup(db, dryRun, numWorkers, dest)
 
 		return nil
 	}
