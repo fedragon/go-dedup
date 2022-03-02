@@ -64,28 +64,10 @@ func main() {
 
 	app.Action = func(c *cli.Context) error {
 		dryRun := c.Bool(dryRunFlag)
-		if dryRun {
-			log.Println("Running in DRY-RUN mode: duplicate files will not be moved")
-		}
-
 		dbPath, err := homedir.Expand(c.String(dbPathFlag))
 		if err != nil {
 			log.Fatalf(err.Error())
 		}
-
-		db, err := dedb.Connect(dbPath)
-		if err != nil {
-			log.Fatal(err.Error())
-		}
-		defer func() {
-			if err := db.Close(); err != nil {
-				log.Println(err.Error())
-			}
-		}()
-
-		numWorkers := runtime.NumCPU()
-		log.Printf("Using %v goroutines\n", numWorkers)
-
 		source, err := homedir.Expand(c.String(sourceFlag))
 		if err != nil {
 			log.Fatal(err.Error())
@@ -94,18 +76,39 @@ func main() {
 		if err != nil {
 			log.Fatal(err.Error())
 		}
+		fileTypes := c.StringSlice(fileTypesFlag)
 
-		pkg.Index(db, c.StringSlice(fileTypesFlag), numWorkers, source)
-		if err := pkg.Sweep(db); err != nil {
-			log.Fatal(err.Error())
-		}
-		pkg.Dedup(db, dryRun, numWorkers, dest)
-
-		return nil
+		return RunAction(dbPath, source, dest, fileTypes, dryRun)
 	}
 
-	err := app.Run(os.Args)
+	if err := app.Run(os.Args); err != nil {
+		log.Fatal(err.Error())
+	}
+}
+
+func RunAction(dbPath string, source string, dest string, fileTypes []string, dryRun bool) error {
+	if dryRun {
+		log.Println("Running in DRY-RUN mode: duplicate files will not be moved")
+	}
+
+	db, err := dedb.Connect(dbPath)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Println(err.Error())
+		}
+	}()
+
+	numWorkers := runtime.NumCPU()
+	log.Printf("Using %v goroutines\n", numWorkers)
+
+	pkg.Index(db, fileTypes, numWorkers, source)
+	if err := pkg.Sweep(db); err != nil {
+		log.Fatal(err.Error())
+	}
+	pkg.Dedup(db, dryRun, numWorkers, dest)
+
+	return nil
 }
