@@ -1,7 +1,6 @@
 package fs
 
 import (
-	"crypto/sha256"
 	"io"
 	"io/fs"
 	"os"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/fedragon/go-dedup/internal"
 	log "github.com/sirupsen/logrus"
+	"lukechampine.com/blake3"
 )
 
 func hash(path string) ([]byte, error) {
@@ -24,7 +24,7 @@ func hash(path string) ([]byte, error) {
 		}
 	}()
 
-	h := sha256.New()
+	h := blake3.New(256, nil)
 	if _, err := io.Copy(h, f); err != nil {
 		return nil, err
 	}

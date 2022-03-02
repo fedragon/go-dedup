@@ -11,4 +11,5 @@ require (
 	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/sys v0.0.0-20210611083646-a4fc73990273 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
+	lukechampine.com/blake3 v1.1.7
 )
