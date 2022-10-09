@@ -3,6 +3,8 @@ package main
 import (
 	"os"
 	"runtime"
+	"runtime/pprof"
+	"time"
 
 	dedb "github.com/fedragon/go-dedup/internal/db"
 	"github.com/fedragon/go-dedup/pkg"
@@ -12,11 +14,13 @@ import (
 )
 
 const (
-	dbPathFlag    = "db-path"
-	sourceFlag    = "source-dir"
-	destFlag      = "dest-dir"
-	fileTypesFlag = "file-types"
-	dryRunFlag    = "dry-run"
+	dbPathFlag     = "db-path"
+	sourceFlag     = "source-dir"
+	destFlag       = "dest-dir"
+	fileTypesFlag  = "file-types"
+	dryRunFlag     = "dry-run"
+	cpuProfileFlag = "cpu-profile"
+	memProfileFlag = "mem-profile"
 )
 
 func main() {
@@ -59,6 +63,16 @@ func main() {
 				EnvVars: []string{"DEDUP_DRY_RUN"},
 				Usage:   "Only print all `mv` operations that would be performed, without actually executing them",
 			},
+			&cli.PathFlag{
+				Name:  cpuProfileFlag,
+				Value: "./cpuprofile",
+				Usage: "Enable profiler and write CPU profiler output to this file",
+			},
+			&cli.PathFlag{
+				Name:  memProfileFlag,
+				Value: "./memprofile",
+				Usage: "Enable profiler and write memory profiler output to this file",
+			},
 		},
 	}
 
@@ -78,6 +92,32 @@ func main() {
 		}
 		fileTypes := c.StringSlice(fileTypesFlag)
 
+		cpuprofile, err := homedir.Expand(c.String(cpuProfileFlag))
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+		if cpuprofile != "" {
+			f, err := os.Create(cpuprofile)
+			if err != nil {
+				log.Fatal(err)
+			}
+			pprof.StartCPUProfile(f)
+			defer pprof.StopCPUProfile()
+		}
+
+		memprofile, err := homedir.Expand(c.String(memProfileFlag))
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+		if memprofile != "" {
+			f, err := os.Create(memprofile)
+			if err != nil {
+				log.Fatal(err)
+			}
+			pprof.WriteHeapProfile(f)
+			defer f.Close()
+		}
+
 		return RunAction(dbPath, source, dest, fileTypes, dryRun)
 	}
 
@@ -87,6 +127,11 @@ func main() {
 }
 
 func RunAction(dbPath string, source string, dest string, fileTypes []string, dryRun bool) error {
+	start := time.Now()
+	defer func() {
+		log.Printf("Elapsed time: %v\n", time.Now().Sub(start))
+	}()
+
 	if dryRun {
 		log.Println("Running in DRY-RUN mode: duplicate files will not be moved")
 	}

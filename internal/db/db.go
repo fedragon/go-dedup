@@ -31,11 +31,11 @@ func Store(db *bolt.DB, media <-chan internal.Media, mark func(map[string]bool, 
 
 		for m := range media {
 			if m.Err != nil {
-				log.Fatalf(m.Err.Error())
+				log.Fatal(m.Err.Error())
 			}
 
 			if err := store(db, m, mark); err != nil {
-				log.Fatalf(err.Error())
+				log.Fatal(err.Error())
 			}
 
 			updated <- 1
