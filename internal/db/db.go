@@ -16,6 +16,13 @@ func Connect(path string) (*bolt.DB, error) {
 	return bolt.Open(path, 0o600, nil)
 }
 
+func Init(db *bolt.DB) error {
+	return db.Update(func(tx *bolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists(bucketName)
+		return err
+	})
+}
+
 func Store(db *bolt.DB, media <-chan internal.Media, mark func(map[string]bool, string)) <-chan int64 {
 	updated := make(chan int64)
 

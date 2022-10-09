@@ -100,6 +100,9 @@ func RunAction(dbPath string, source string, dest string, fileTypes []string, dr
 			log.Println(err.Error())
 		}
 	}()
+	if err := dedb.Init(db); err != nil {
+		log.Fatal(err.Error())
+	}
 
 	numWorkers := runtime.NumCPU()
 	log.Printf("Using %v goroutines\n", numWorkers)
