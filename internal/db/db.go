@@ -40,18 +40,18 @@ func Store(db *bolt.DB, media <-chan internal.Media, mark func(map[string]bool, 
 
 func store(db *bolt.DB, m internal.Media, mark func(map[string]bool, string)) error {
 	return db.Update(func(tx *bolt.Tx) error {
-		bucket, err := tx.CreateBucketIfNotExists(bucketName)
-		if err != nil {
-			return err
-		}
-
 		var entries map[string]bool
+		bucket := tx.Bucket(bucketName)
 		bytes := bucket.Get(m.Hash)
 
 		if bytes != nil {
-			if err = json.Unmarshal(bytes, &entries); err != nil {
+			if err := json.Unmarshal(bytes, &entries); err != nil {
 				return err
 			}
+		}
+
+		if entries == nil {
+			entries = make(map[string]bool)
 		}
 
 		mark(entries, m.Path)
