@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"bufio"
+	"context"
 	"os"
 	"path/filepath"
 
@@ -30,11 +31,11 @@ func Dedup(db *bolt.DB, dryRun bool, numWorkers int, target string) {
 		workers[i] = dedup(i, dryRun, target, media)
 	}
 
-	done := make(chan struct{})
-	defer close(done)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	var deduped int64
-	for i := range Merge(done, workers...) {
+	for i := range Merge(ctx, workers...) {
 		if deduped > 0 && deduped%1000 == 0 {
 			log.Printf("Deduplicated %v files so far\n", deduped)
 		}

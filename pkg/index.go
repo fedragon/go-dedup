@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"context"
 	"github.com/boltdb/bolt"
 	dedb "github.com/fedragon/go-dedup/internal/db"
 	"github.com/fedragon/go-dedup/internal/fs"
@@ -34,11 +35,11 @@ func Index(db *bolt.DB, fileTypes []string, numWorkers int, source string) {
 		workers[i] = dedb.Store(db, media, mark)
 	}
 
-	done := make(chan struct{})
-	defer close(done)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	var upserted int64
-	for i := range Merge(done, workers...) {
+	for i := range Merge(ctx, workers...) {
 		if upserted > 0 && upserted%1000 == 0 {
 			log.Printf("Indexed %v files so far\n", upserted)
 		}

@@ -80,7 +80,7 @@ func main() {
 		dryRun := c.Bool(dryRunFlag)
 		dbPath, err := homedir.Expand(c.String(dbPathFlag))
 		if err != nil {
-			log.Fatalf(err.Error())
+			log.Fatal(err.Error())
 		}
 		source, err := homedir.Expand(c.String(sourceFlag))
 		if err != nil {

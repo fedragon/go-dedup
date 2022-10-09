@@ -1,8 +1,11 @@
 package pkg
 
-import "sync"
+import (
+	"context"
+	"sync"
+)
 
-func Merge(done <-chan struct{}, channels ...<-chan int64) <-chan int64 {
+func Merge(ctx context.Context, channels ...<-chan int64) <-chan int64 {
 	var wg sync.WaitGroup
 
 	wg.Add(len(channels))
@@ -11,7 +14,7 @@ func Merge(done <-chan struct{}, channels ...<-chan int64) <-chan int64 {
 		defer wg.Done()
 		for i := range c {
 			select {
-			case <-done:
+			case <-ctx.Done():
 				return
 			case media <- i:
 			}
