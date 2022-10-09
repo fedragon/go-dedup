@@ -38,9 +38,9 @@ func Walk(root string, fileTypes []string) <-chan internal.Media {
 	go func() {
 		defer close(media)
 
-		typesMap := make(map[string]int)
+		typesMap := make(map[string]struct{})
 		for _, t := range fileTypes {
-			typesMap[t] = 1
+			typesMap[t] = struct{}{}
 		}
 
 		err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
@@ -50,7 +50,7 @@ func Walk(root string, fileTypes []string) <-chan internal.Media {
 
 			if !d.IsDir() {
 				ext := strings.ToLower(filepath.Ext(d.Name()))
-				if typesMap[ext] > 0 {
+				if _, exists := typesMap[ext]; exists {
 					bytes, err := hash(path)
 					if err != nil {
 						return err
