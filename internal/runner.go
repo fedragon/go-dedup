@@ -53,14 +53,19 @@ func (r *Runner) Run() error {
 		r.logger.Fatal(err.Error())
 	}
 
+	repo, err := dedb.NewRepository(db, r.logger)
+	if err != nil {
+		r.logger.Fatal(err.Error())
+	}
+
 	numWorkers := runtime.NumCPU()
 	r.logger.Info("Determined number of workers", zap.Int("num_workers", numWorkers))
 
-	pkg.Index(db, r.logger, r.fileTypes, numWorkers, r.source)
-	if err := pkg.Sweep(db, r.logger); err != nil {
+	pkg.Index(repo, r.logger, r.fileTypes, numWorkers, r.source)
+	if err := pkg.Sweep(repo, r.logger); err != nil {
 		r.logger.Fatal(err.Error())
 	}
-	pkg.Dedup(db, r.logger, r.dryRun, numWorkers, r.dest)
+	pkg.Dedup(repo, r.logger, r.dryRun, numWorkers, r.dest)
 
 	return nil
 }

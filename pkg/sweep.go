@@ -1,12 +1,12 @@
 package pkg
 
 import (
-	"github.com/boltdb/bolt"
-	dedb "github.com/fedragon/go-dedup/internal/db"
+	"github.com/fedragon/go-dedup/internal/db"
+
 	"go.uber.org/zap"
 )
 
-func Sweep(db *bolt.DB, logger *zap.Logger) error {
+func Sweep(repo db.Repository, logger *zap.Logger) error {
 	logger.Info("Sweeping stale entries...")
 
 	doSweep := func(entries map[string]bool) {
@@ -27,5 +27,5 @@ func Sweep(db *bolt.DB, logger *zap.Logger) error {
 		}
 	}
 
-	return dedb.Sweep(db, doSweep)
+	return repo.Sweep(doSweep)
 }

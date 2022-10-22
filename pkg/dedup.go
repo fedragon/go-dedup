@@ -6,15 +6,14 @@ import (
 	"os"
 	"path/filepath"
 
-	dedb "github.com/fedragon/go-dedup/internal/db"
+	"github.com/fedragon/go-dedup/internal/db"
 	"github.com/fedragon/go-dedup/internal/models"
 	"github.com/natefinch/atomic"
 
-	"github.com/boltdb/bolt"
 	"go.uber.org/zap"
 )
 
-func Dedup(db *bolt.DB, logger *zap.Logger, dryRun bool, numWorkers int, target string) {
+func Dedup(repo db.Repository, logger *zap.Logger, dryRun bool, numWorkers int, target string) {
 	logger.Info("Deduplicating files to directory", zap.String("path", target))
 
 	if !dryRun {
@@ -25,7 +24,7 @@ func Dedup(db *bolt.DB, logger *zap.Logger, dryRun bool, numWorkers int, target 
 		}
 	}
 
-	media := dedb.List(db, logger)
+	media := repo.List()
 
 	workers := make([]<-chan int64, numWorkers)
 	for i := 0; i < numWorkers; i++ {
