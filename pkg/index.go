@@ -2,14 +2,17 @@ package pkg
 
 import (
 	"context"
-	"github.com/boltdb/bolt"
+	"fmt"
+
 	dedb "github.com/fedragon/go-dedup/internal/db"
 	"github.com/fedragon/go-dedup/internal/fs"
-	log "github.com/sirupsen/logrus"
+
+	"github.com/boltdb/bolt"
+	"go.uber.org/zap"
 )
 
-func Index(db *bolt.DB, fileTypes []string, numWorkers int, source string) {
-	log.Printf("Indexing %v ...\n", source)
+func Index(db *bolt.DB, logger *zap.Logger, fileTypes []string, numWorkers int, source string) {
+	logger.Info(fmt.Sprintf("Indexing %v ...\n", source))
 
 	media := fs.Walk(source, fileTypes)
 
@@ -32,7 +35,7 @@ func Index(db *bolt.DB, fileTypes []string, numWorkers int, source string) {
 
 	workers := make([]<-chan int64, numWorkers)
 	for i := 0; i < numWorkers; i++ {
-		workers[i] = dedb.Store(db, media, mark)
+		workers[i] = dedb.Store(db, logger, media, mark)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -41,9 +44,9 @@ func Index(db *bolt.DB, fileTypes []string, numWorkers int, source string) {
 	var upserted int64
 	for i := range Merge(ctx, workers...) {
 		if upserted > 0 && upserted%1000 == 0 {
-			log.Printf("Indexed %v files so far\n", upserted)
+			logger.Info(fmt.Sprintf("Indexed %v files so far\n", upserted))
 		}
 		upserted += i
 	}
-	log.Printf("Indexed %v files in total\n", upserted)
+	logger.Info(fmt.Sprintf("Indexed %v files in total\n", upserted))
 }

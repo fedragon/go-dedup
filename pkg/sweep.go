@@ -3,11 +3,11 @@ package pkg
 import (
 	"github.com/boltdb/bolt"
 	dedb "github.com/fedragon/go-dedup/internal/db"
-	log "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
-func Sweep(db *bolt.DB) error {
-	log.Println("Sweeping stale entries...")
+func Sweep(db *bolt.DB, logger *zap.Logger) error {
+	logger.Info("Sweeping stale entries...")
 
 	doSweep := func(entries map[string]bool) {
 		if entries != nil {
@@ -21,7 +21,7 @@ func Sweep(db *bolt.DB) error {
 			}
 
 			for _, path := range missing {
-				log.Printf("Swept non-existing path: %s\n", path)
+				logger.Info("Swept non-existing path", zap.String("path", path))
 				delete(entries, path)
 			}
 		}

@@ -2,15 +2,13 @@ package main
 
 import (
 	"os"
-	"runtime"
 	"runtime/pprof"
-	"time"
 
-	dedb "github.com/fedragon/go-dedup/internal/db"
-	"github.com/fedragon/go-dedup/pkg"
+	"github.com/fedragon/go-dedup/internal"
 	"github.com/mitchellh/go-homedir"
-	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
+
+	"go.uber.org/zap"
 )
 
 const (
@@ -24,6 +22,11 @@ const (
 )
 
 func main() {
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		panic(err)
+	}
+
 	app := &cli.App{
 		Usage:           "a cli to deduplicate media files",
 		UsageText:       "dedup [global options]",
@@ -80,83 +83,48 @@ func main() {
 		dryRun := c.Bool(dryRunFlag)
 		dbPath, err := homedir.Expand(c.String(dbPathFlag))
 		if err != nil {
-			log.Fatal(err.Error())
+			logger.Fatal(err.Error())
 		}
 		source, err := homedir.Expand(c.String(sourceFlag))
 		if err != nil {
-			log.Fatal(err.Error())
+			logger.Fatal(err.Error())
 		}
 		dest, err := homedir.Expand(c.String(destFlag))
 		if err != nil {
-			log.Fatal(err.Error())
+			logger.Fatal(err.Error())
 		}
 		fileTypes := c.StringSlice(fileTypesFlag)
 
 		cpuprofile, err := homedir.Expand(c.String(cpuProfileFlag))
 		if err != nil {
-			log.Fatal(err.Error())
+			logger.Fatal(err.Error())
 		}
 		if cpuprofile != "" {
 			f, err := os.Create(cpuprofile)
 			if err != nil {
-				log.Fatal(err)
+				logger.Fatal(err.Error())
 			}
-			pprof.StartCPUProfile(f)
+			_ = pprof.StartCPUProfile(f)
 			defer pprof.StopCPUProfile()
 		}
 
 		memprofile, err := homedir.Expand(c.String(memProfileFlag))
 		if err != nil {
-			log.Fatal(err.Error())
+			logger.Fatal(err.Error())
 		}
 		if memprofile != "" {
 			f, err := os.Create(memprofile)
 			if err != nil {
-				log.Fatal(err)
+				logger.Fatal(err.Error())
 			}
-			pprof.WriteHeapProfile(f)
+			_ = pprof.WriteHeapProfile(f)
 			defer f.Close()
 		}
 
-		return RunAction(dbPath, source, dest, fileTypes, dryRun)
+		return internal.NewRunner(logger.With(zap.Bool("dry_run", dryRun)), dbPath, source, dest, fileTypes, dryRun).Run()
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		log.Fatal(err.Error())
+		logger.Fatal(err.Error())
 	}
-}
-
-func RunAction(dbPath string, source string, dest string, fileTypes []string, dryRun bool) error {
-	start := time.Now()
-	defer func() {
-		log.Printf("Elapsed time: %v\n", time.Now().Sub(start))
-	}()
-
-	if dryRun {
-		log.Println("Running in DRY-RUN mode: duplicate files will not be moved")
-	}
-
-	db, err := dedb.Connect(dbPath)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-	defer func() {
-		if err := db.Close(); err != nil {
-			log.Println(err.Error())
-		}
-	}()
-	if err := dedb.Init(db); err != nil {
-		log.Fatal(err.Error())
-	}
-
-	numWorkers := runtime.NumCPU()
-	log.Printf("Using %v goroutines\n", numWorkers)
-
-	pkg.Index(db, fileTypes, numWorkers, source)
-	if err := pkg.Sweep(db); err != nil {
-		log.Fatal(err.Error())
-	}
-	pkg.Dedup(db, dryRun, numWorkers, dest)
-
-	return nil
 }

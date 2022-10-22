@@ -8,8 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fedragon/go-dedup/internal"
-	log "github.com/sirupsen/logrus"
+	"github.com/fedragon/go-dedup/internal/models"
 	"lukechampine.com/blake3"
 )
 
@@ -18,11 +17,7 @@ func hash(path string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		if err := f.Close(); err != nil {
-			log.Printf(err.Error())
-		}
-	}()
+	defer f.Close()
 
 	h := blake3.New(256, nil)
 	if _, err := io.Copy(h, f); err != nil {
@@ -32,8 +27,8 @@ func hash(path string) ([]byte, error) {
 	return h.Sum(nil), nil
 }
 
-func Walk(root string, fileTypes []string) <-chan internal.Media {
-	media := make(chan internal.Media)
+func Walk(root string, fileTypes []string) <-chan models.Media {
+	media := make(chan models.Media)
 
 	go func() {
 		defer close(media)
@@ -56,7 +51,7 @@ func Walk(root string, fileTypes []string) <-chan internal.Media {
 						return err
 					}
 
-					media <- internal.Media{
+					media <- models.Media{
 						Path:      path,
 						Hash:      bytes,
 						Timestamp: time.Now(),
@@ -67,7 +62,7 @@ func Walk(root string, fileTypes []string) <-chan internal.Media {
 			return nil
 		})
 		if err != nil {
-			media <- internal.Media{Err: err}
+			media <- models.Media{Err: err}
 		}
 	}()
 

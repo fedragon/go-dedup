@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"github.com/boltdb/bolt"
-	"github.com/fedragon/go-dedup/internal"
-	log "github.com/sirupsen/logrus"
+	"github.com/fedragon/go-dedup/internal/models"
+	"go.uber.org/zap"
 )
 
 var bucketName = []byte("Hashes")
@@ -23,7 +23,7 @@ func Init(db *bolt.DB) error {
 	})
 }
 
-func Store(db *bolt.DB, media <-chan internal.Media, mark func(map[string]bool, string)) <-chan int64 {
+func Store(db *bolt.DB, logger *zap.Logger, media <-chan models.Media, mark func(map[string]bool, string)) <-chan int64 {
 	updated := make(chan int64)
 
 	go func() {
@@ -31,11 +31,11 @@ func Store(db *bolt.DB, media <-chan internal.Media, mark func(map[string]bool, 
 
 		for m := range media {
 			if m.Err != nil {
-				log.Fatal(m.Err.Error())
+				logger.Fatal(m.Err.Error())
 			}
 
 			if err := store(db, m, mark); err != nil {
-				log.Fatal(err.Error())
+				logger.Fatal(err.Error())
 			}
 
 			updated <- 1
@@ -45,7 +45,7 @@ func Store(db *bolt.DB, media <-chan internal.Media, mark func(map[string]bool, 
 	return updated
 }
 
-func store(db *bolt.DB, m internal.Media, mark func(map[string]bool, string)) error {
+func store(db *bolt.DB, m models.Media, mark func(map[string]bool, string)) error {
 	return db.Update(func(tx *bolt.Tx) error {
 		var entries map[string]bool
 		bucket := tx.Bucket(bucketName)
@@ -72,8 +72,8 @@ func store(db *bolt.DB, m internal.Media, mark func(map[string]bool, string)) er
 	})
 }
 
-func List(db *bolt.DB) <-chan internal.AggregatedMedia {
-	media := make(chan internal.AggregatedMedia)
+func List(db *bolt.DB, logger *zap.Logger) <-chan models.AggregatedMedia {
+	media := make(chan models.AggregatedMedia)
 
 	go func() {
 		defer close(media)
@@ -96,11 +96,11 @@ func List(db *bolt.DB) <-chan internal.AggregatedMedia {
 					paths = append(paths, k)
 				}
 
-				media <- internal.AggregatedMedia{Hash: k, Paths: paths}
+				media <- models.AggregatedMedia{Hash: k, Paths: paths}
 				return nil
 			})
 		}); err != nil {
-			log.Fatalf("error while reading from bucket: %v\n", err)
+			logger.Fatal("error while reading from bucket", zap.Error(err))
 		}
 	}()
 
