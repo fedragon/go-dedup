@@ -37,21 +37,18 @@ func main() {
 				Name:     sourceFlag,
 				Aliases:  []string{"src"},
 				Required: true,
-				EnvVars:  []string{"DEDUP_SRC_PATH"},
 				Usage:    "Absolute path of the directory to scan",
 			},
 			&cli.PathFlag{
 				Name:     destFlag,
 				Aliases:  []string{"dst"},
 				Required: true,
-				EnvVars:  []string{"DEDUP_DST_PATH"},
 				Usage:    "Absolute path of the directory to move duplicates to",
 			},
 			&cli.PathFlag{
 				Name:    dbPathFlag,
 				Aliases: []string{"db"},
 				Value:   "./my.db",
-				EnvVars: []string{"DEDUP_DB_PATH"},
 				Usage:   "Path to the BoltDB file",
 			},
 			&cli.StringSliceFlag{
@@ -61,10 +58,9 @@ func main() {
 				Usage:   "Media file types to be indexed",
 			},
 			&cli.BoolFlag{
-				Name:    dryRunFlag,
-				Value:   false,
-				EnvVars: []string{"DEDUP_DRY_RUN"},
-				Usage:   "Only print all `mv` operations that would be performed, without actually executing them",
+				Name:  dryRunFlag,
+				Value: false,
+				Usage: "Only print all `mv` operations that would be performed, without actually executing them",
 			},
 			&cli.PathFlag{
 				Name:  cpuProfileFlag,
