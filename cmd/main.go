@@ -65,12 +65,10 @@ func main() {
 			},
 			&cli.PathFlag{
 				Name:  cpuProfileFlag,
-				Value: "./cpuprofile",
 				Usage: "Enable profiler and write CPU profiler output to this file",
 			},
 			&cli.PathFlag{
 				Name:  memProfileFlag,
-				Value: "./memprofile",
 				Usage: "Enable profiler and write memory profiler output to this file",
 			},
 		},
@@ -92,11 +90,12 @@ func main() {
 		}
 		fileTypes := c.StringSlice(fileTypesFlag)
 
-		cpuprofile, err := homedir.Expand(c.String(cpuProfileFlag))
-		if err != nil {
-			logger.Fatal(err.Error())
-		}
-		if cpuprofile != "" {
+		if c.String(cpuProfileFlag) != "" {
+			cpuprofile, err := homedir.Expand(c.String(cpuProfileFlag))
+			if err != nil {
+				logger.Fatal(err.Error())
+			}
+
 			f, err := os.Create(cpuprofile)
 			if err != nil {
 				logger.Fatal(err.Error())
@@ -105,11 +104,12 @@ func main() {
 			defer pprof.StopCPUProfile()
 		}
 
-		memprofile, err := homedir.Expand(c.String(memProfileFlag))
-		if err != nil {
-			logger.Fatal(err.Error())
-		}
-		if memprofile != "" {
+		if c.String(memProfileFlag) != "" {
+			memprofile, err := homedir.Expand(c.String(memProfileFlag))
+			if err != nil {
+				logger.Fatal(err.Error())
+			}
+
 			f, err := os.Create(memprofile)
 			if err != nil {
 				logger.Fatal(err.Error())
