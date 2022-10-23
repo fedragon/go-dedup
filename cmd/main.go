@@ -28,7 +28,8 @@ func main() {
 	}
 
 	app := &cli.App{
-		Usage:           "a cli to deduplicate media files",
+		Usage:           "a cli to deduplicate files",
+		Description:     "Identifies duplicated files and moves them to a user-provided directory",
 		UsageText:       "dedup [global options]",
 		Version:         "0.1.0",
 		HideHelpCommand: true,
@@ -55,12 +56,12 @@ func main() {
 				Name:    fileTypesFlag,
 				Value:   cli.NewStringSlice(".cr2", ".jpg", ".jpeg", ".mov", ".mp4", ".orf"),
 				EnvVars: []string{"DEDUP_FILE_TYPES"},
-				Usage:   "Media file types to be indexed",
+				Usage:   "File types to check",
 			},
 			&cli.BoolFlag{
 				Name:  dryRunFlag,
 				Value: false,
-				Usage: "Only print all `mv` operations that would be performed, without actually executing them",
+				Usage: "Only print all file move operations that would be performed, without actually executing them",
 			},
 			&cli.PathFlag{
 				Name:  cpuProfileFlag,
