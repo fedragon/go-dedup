@@ -25,7 +25,7 @@ type ConcurrentDeduper struct {
 	Logger     *zap.Logger
 }
 
-func (cd *ConcurrentDeduper) Dedup(target string) error {
+func (cd *ConcurrentDeduper) Dedup(parentCtx context.Context, target string) error {
 	cd.Logger.Info("Deduplicating files", zap.String("target_directory", target))
 
 	if !cd.DryRun {
@@ -43,17 +43,17 @@ func (cd *ConcurrentDeduper) Dedup(target string) error {
 		workers[i] = dedup(cd.Logger, i, cd.DryRun, target, media)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(parentCtx)
 	defer cancel()
 
-	var deduped int64
+	var total int64
 	for i := range merge(ctx, workers...) {
-		if deduped > 0 && deduped%1000 == 0 {
-			cd.Logger.Info("Deduplicated a(nother) batch of files", zap.Int64("count", deduped))
+		if total > 0 && total%1000 == 0 {
+			cd.Logger.Info("Deduplicated a(nother) batch of files", zap.Int64("count", total))
 		}
-		deduped += i
+		total += i
 	}
-	cd.Logger.Info("Total deduplicated files", zap.Int64("total", deduped))
+	cd.Logger.Info("Total deduplicated files", zap.Int64("total", total))
 
 	return nil
 }

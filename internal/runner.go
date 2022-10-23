@@ -1,6 +1,9 @@
 package internal
 
 import (
+	"context"
+	"os"
+	"os/signal"
 	"runtime"
 	"time"
 
@@ -50,13 +53,16 @@ func (r *Runner) Run() error {
 	numWorkers := runtime.NumCPU()
 	r.logger.Info("Determined number of workers", zap.Int("num_workers", numWorkers))
 
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
 	indexer := core.ConcurrentIndexer{
 		Repo:       repo,
 		NumWorkers: numWorkers,
 		FileTypes:  r.fileTypes,
 		Logger:     r.logger,
 	}
-	indexer.Index(r.source)
+	indexer.Index(ctx, r.source)
 
 	if err := core.Sweep(repo, r.logger); err != nil {
 		return err
@@ -68,5 +74,5 @@ func (r *Runner) Run() error {
 		DryRun:     r.dryRun,
 		Logger:     r.logger,
 	}
-	return deduper.Dedup(r.dest)
+	return deduper.Dedup(ctx, r.dest)
 }

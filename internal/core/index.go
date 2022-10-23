@@ -20,7 +20,7 @@ type ConcurrentIndexer struct {
 	Logger     *zap.Logger
 }
 
-func (ci *ConcurrentIndexer) Index(source string) {
+func (ci *ConcurrentIndexer) Index(parentCtx context.Context, source string) {
 	ci.Logger.Info(fmt.Sprintf("Indexing %v ...\n", source))
 
 	media := fs.Walk(source, ci.FileTypes)
@@ -30,7 +30,7 @@ func (ci *ConcurrentIndexer) Index(source string) {
 		workers[i] = ci.Repo.Store(media)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(parentCtx)
 	defer cancel()
 
 	var upserted int64
