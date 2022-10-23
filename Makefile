@@ -4,6 +4,9 @@ default: all
 benchmark:
 	go test -bench=. ./...
 
+lint:
+	golangci-lint run ./...
+
 test:
 	go test -v -race -count=1 ./...
 

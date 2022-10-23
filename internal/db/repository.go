@@ -11,10 +11,12 @@ import (
 	"go.uber.org/zap"
 )
 
+var bucketName = []byte("Hashes")
+
 type Repository interface {
 	List() <-chan models.AggregatedMedia
-	Store(media <-chan models.Media, mark func(map[string]bool, string)) <-chan int64
-	Sweep(doSweep func(map[string]bool)) error
+	Store(media <-chan models.Media) <-chan int64
+	Sweep() error
 }
 
 type BoltRepository struct {
@@ -22,14 +24,41 @@ type BoltRepository struct {
 	logger *zap.Logger
 }
 
-func NewRepository(db *bolt.DB, logger *zap.Logger) (Repository, error) {
+func NewBoltRepository(path string, logger *zap.Logger) (*BoltRepository, error) {
+	db, err := connect(path)
+	if err != nil {
+		return nil, err
+	}
+
 	return &BoltRepository{
 		db:     db,
 		logger: logger,
 	}, nil
 }
 
-func (r *BoltRepository) Store(media <-chan models.Media, mark func(map[string]bool, string)) <-chan int64 {
+func connect(path string) (*bolt.DB, error) {
+	db, err := bolt.Open(path, 0o600, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := db.Update(func(tx *bolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists(bucketName)
+		return err
+	}); err != nil {
+		return nil, err
+	}
+
+	return db, nil
+}
+
+func (r *BoltRepository) Close() {
+	if err := r.db.Close(); err != nil {
+		r.logger.Error("Unable to close database", zap.Error(err))
+	}
+}
+
+func (r *BoltRepository) Store(media <-chan models.Media) <-chan int64 {
 	updated := make(chan int64)
 
 	go func() {
@@ -40,7 +69,7 @@ func (r *BoltRepository) Store(media <-chan models.Media, mark func(map[string]b
 				r.logger.Fatal(m.Err.Error())
 			}
 
-			if err := store(r.db, m, mark); err != nil {
+			if err := r.store(m); err != nil {
 				r.logger.Fatal(err.Error())
 			}
 
@@ -51,8 +80,8 @@ func (r *BoltRepository) Store(media <-chan models.Media, mark func(map[string]b
 	return updated
 }
 
-func store(db *bolt.DB, m models.Media, mark func(map[string]bool, string)) error {
-	return db.Update(func(tx *bolt.Tx) error {
+func (r *BoltRepository) store(m models.Media) error {
+	return r.db.Update(func(tx *bolt.Tx) error {
 		var entries map[string]bool
 		bucket := tx.Bucket(bucketName)
 		bytes := bucket.Get(m.Hash)
@@ -63,11 +92,7 @@ func store(db *bolt.DB, m models.Media, mark func(map[string]bool, string)) erro
 			}
 		}
 
-		if entries == nil {
-			entries = make(map[string]bool)
-		}
-
-		mark(entries, m.Path)
+		entries = mark(entries, m.Path)
 
 		marshalled, err := json.Marshal(&entries)
 		if err != nil {
@@ -76,6 +101,25 @@ func store(db *bolt.DB, m models.Media, mark func(map[string]bool, string)) erro
 
 		return bucket.Put(m.Hash, marshalled)
 	})
+}
+
+func mark(entries map[string]bool, path string) map[string]bool {
+	exists := false
+	for p := range entries {
+		if p == path {
+			entries[path] = true
+			exists = true
+			break
+		}
+	}
+	if !exists {
+		if entries == nil {
+			entries = make(map[string]bool)
+		}
+		entries[path] = true
+	}
+
+	return entries
 }
 
 func (r *BoltRepository) List() <-chan models.AggregatedMedia {
@@ -98,22 +142,22 @@ func (r *BoltRepository) List() <-chan models.AggregatedMedia {
 				}
 
 				paths := make([]string, 0, len(entries))
-				for k := range entries {
-					paths = append(paths, k)
+				for e := range entries {
+					paths = append(paths, e)
 				}
 
 				media <- models.AggregatedMedia{Hash: k, Paths: paths}
 				return nil
 			})
 		}); err != nil {
-			r.logger.Fatal("error while reading from bucket", zap.Error(err))
+			r.logger.Fatal("Error while reading from bucket", zap.Error(err))
 		}
 	}()
 
 	return media
 }
 
-func (r *BoltRepository) Sweep(doSweep func(map[string]bool)) error {
+func (r *BoltRepository) Sweep() error {
 	return r.db.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(bucketName)
 		if bucket == nil {
@@ -128,7 +172,7 @@ func (r *BoltRepository) Sweep(doSweep func(map[string]bool)) error {
 					return err
 				}
 
-				doSweep(entries)
+				entries = r.sweep(entries)
 
 				marshalled, err := json.Marshal(&entries)
 				if err != nil {
@@ -143,4 +187,24 @@ func (r *BoltRepository) Sweep(doSweep func(map[string]bool)) error {
 
 		return nil
 	})
+}
+
+func (r *BoltRepository) sweep(entries map[string]bool) map[string]bool {
+	if entries != nil {
+		var missing []string
+		for path, marked := range entries {
+			if marked {
+				entries[path] = false
+			} else {
+				missing = append(missing, path)
+			}
+		}
+
+		for _, path := range missing {
+			r.logger.Info("Swept non-existing path", zap.String("path", path))
+			delete(entries, path)
+		}
+	}
+
+	return entries
 }

@@ -1,47 +1,61 @@
-package pkg
+package core
 
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/fedragon/go-dedup/internal/db"
 	"github.com/fedragon/go-dedup/internal/models"
-	"github.com/natefinch/atomic"
 
+	"github.com/natefinch/atomic"
 	"go.uber.org/zap"
 )
 
-func Dedup(repo db.Repository, logger *zap.Logger, dryRun bool, numWorkers int, target string) {
-	logger.Info("Deduplicating files to directory", zap.String("path", target))
+type Deduper interface {
+	Dedup(target string)
+}
 
-	if !dryRun {
+type ConcurrentDeduper struct {
+	Repo       db.Repository
+	NumWorkers int
+	DryRun     bool
+	Logger     *zap.Logger
+}
+
+func (cd *ConcurrentDeduper) Dedup(target string) error {
+	cd.Logger.Info("Deduplicating files", zap.String("target_directory", target))
+
+	if !cd.DryRun {
 		if _, err := os.Stat(target); os.IsNotExist(err) {
 			if err := os.MkdirAll(target, os.ModePerm); err != nil {
-				logger.Fatal("Unable to create target directory", zap.String("path", target), zap.Error(err))
+				return fmt.Errorf("unable to create target directory %v: %w", target, err)
 			}
 		}
 	}
 
-	media := repo.List()
+	media := cd.Repo.List()
 
-	workers := make([]<-chan int64, numWorkers)
-	for i := 0; i < numWorkers; i++ {
-		workers[i] = dedup(logger, i, dryRun, target, media)
+	workers := make([]<-chan int64, cd.NumWorkers)
+	for i := 0; i < cd.NumWorkers; i++ {
+		workers[i] = dedup(cd.Logger, i, cd.DryRun, target, media)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	var deduped int64
-	for i := range Merge(ctx, workers...) {
+	for i := range merge(ctx, workers...) {
 		if deduped > 0 && deduped%1000 == 0 {
-			logger.Info("Deduplicated a(nother) batch of files", zap.Int64("count", deduped))
+			cd.Logger.Info("Deduplicated a(nother) batch of files", zap.Int64("count", deduped))
 		}
 		deduped += i
 	}
-	logger.Info("Total deduplicated files", zap.Int64("total", deduped))
+	cd.Logger.Info("Total deduplicated files", zap.Int64("total", deduped))
+
+	return nil
 }
 
 func dedup(logger *zap.Logger, id int, dryRun bool, targetDir string, media <-chan models.AggregatedMedia) <-chan int64 {
@@ -69,9 +83,7 @@ func dedup(logger *zap.Logger, id int, dryRun bool, targetDir string, media <-ch
 					}
 
 					log.Info("Atomically moving file", zap.String("source", path), zap.String("dest", target))
-					err = atomic.WriteFile(target, bufio.NewReader(buf))
-
-					if err != nil {
+					if err := atomic.WriteFile(target, bufio.NewReader(buf)); err != nil {
 						log.Error("Cannot atomically move file", zap.String("source", path), zap.String("dest", target), zap.Error(err))
 						continue
 					}

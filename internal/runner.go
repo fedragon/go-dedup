@@ -4,8 +4,8 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/fedragon/go-dedup/internal/core"
 	dedb "github.com/fedragon/go-dedup/internal/db"
-	"github.com/fedragon/go-dedup/pkg"
 
 	"go.uber.org/zap"
 )
@@ -34,38 +34,39 @@ func (r *Runner) Run() error {
 	start := time.Now()
 	defer func() {
 		r.logger.Info("Elapsed time", zap.Duration("elapsed", time.Since(start)))
+		_ = r.logger.Sync()
 	}()
 
 	if r.dryRun {
 		r.logger.Info("Running in DRY-RUN mode: duplicate files will not be moved")
 	}
 
-	db, err := dedb.Connect(r.dbPath)
+	repo, err := dedb.NewBoltRepository(r.dbPath, r.logger)
 	if err != nil {
-		r.logger.Fatal(err.Error())
+		return err
 	}
-	defer func() {
-		if err := db.Close(); err != nil {
-			r.logger.Info(err.Error())
-		}
-	}()
-	if err := dedb.Init(db); err != nil {
-		r.logger.Fatal(err.Error())
-	}
-
-	repo, err := dedb.NewRepository(db, r.logger)
-	if err != nil {
-		r.logger.Fatal(err.Error())
-	}
+	defer repo.Close()
 
 	numWorkers := runtime.NumCPU()
 	r.logger.Info("Determined number of workers", zap.Int("num_workers", numWorkers))
 
-	pkg.Index(repo, r.logger, r.fileTypes, numWorkers, r.source)
-	if err := pkg.Sweep(repo, r.logger); err != nil {
-		r.logger.Fatal(err.Error())
+	indexer := core.ConcurrentIndexer{
+		Repo:       repo,
+		NumWorkers: numWorkers,
+		FileTypes:  r.fileTypes,
+		Logger:     r.logger,
 	}
-	pkg.Dedup(repo, r.logger, r.dryRun, numWorkers, r.dest)
+	indexer.Index(r.source)
 
-	return nil
+	if err := core.Sweep(repo, r.logger); err != nil {
+		return err
+	}
+
+	deduper := core.ConcurrentDeduper{
+		Repo:       repo,
+		NumWorkers: numWorkers,
+		DryRun:     r.dryRun,
+		Logger:     r.logger,
+	}
+	return deduper.Dedup(r.dest)
 }

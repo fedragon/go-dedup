@@ -1,11 +1,11 @@
-package pkg
+package core
 
 import (
 	"context"
 	"sync"
 )
 
-func Merge(ctx context.Context, channels ...<-chan int64) <-chan int64 {
+func merge(ctx context.Context, channels ...<-chan int64) <-chan int64 {
 	var wg sync.WaitGroup
 
 	wg.Add(len(channels))
